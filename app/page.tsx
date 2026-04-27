@@ -1,66 +1,61 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client'
+import Sidebar                   from '@/components/Sidebar'
+import { ObsCard, SkeletonCard } from '@/components/ObsCard'
+import { WorldMap }              from '@/components/Map/WorldMap'
+import { useWeather }            from '@/hooks/useWeather'
+import { COLORS }                from '@/constants/observatories'
 
 export default function Home() {
+  const { observatories, loading, lastUpdate } = useWeather()
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div style={{ minHeight: '100vh', background: COLORS.bg, color: '#f1f5f9', fontFamily: "'DM Sans','Helvetica Neue',sans-serif", display: 'flex' }}>
+      <style>{`
+        * { box-sizing: border-box; }
+        .main-layout { flex: 1; min-width: 0; padding: 20px 28px; }
+        .obs-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+        .obs-grid > * { min-height: 270px; }
+        @media (max-width: 1024px) { .obs-grid { grid-template-columns: repeat(2,1fr); } }
+        @media (max-width: 768px)  { .main-layout { padding: 12px; } .obs-grid { grid-template-columns: 1fr; } }
+      `}</style>
+
+      <Sidebar activeId="all" />
+
+      <main className="main-layout">
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexShrink: 0 }}>
+          <span style={{ color: '#4fd1c5', fontSize: '22px' }}>✦</span>
+          <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#ffffff', letterSpacing: '-0.02em' }}>Weather Report</h1>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {lastUpdate && <span style={{ fontSize: '11px', color: '#2a4a4a' }}>Updated {lastUpdate}</span>}
+            <span style={{ fontSize: '11px', color: '#1e3030', letterSpacing: '0.1em', fontWeight: '600' }}>{observatories.length} OBSERVATORIES</span>
+          </div>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* แผนที่ */}
+        <WorldMap observatories={observatories} />
+
+        {/* AI Chat */}
+        <div style={{ background: COLORS.card, borderRadius: '12px', border: '1px solid rgba(79,209,197,0.15)', padding: '12px 16px', marginBottom: '20px', display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: '18px' }}></span>
+          <div style={{ flex: 1, background: COLORS.bg, border: '1px solid rgba(79,209,197,0.2)', borderRadius: '8px', padding: '10px 14px', color: '#334155', fontSize: '13px' }}>
+            ถามเกี่ยวกับสภาพอากาศ เช่น "คืนนี้หอไหนดูดาวได้บ้าง?"
+          </div>
+          <div style={{ background: 'rgba(79,209,197,0.15)', border: '1px solid rgba(79,209,197,0.4)', borderRadius: '8px', color: '#4fd1c5', padding: '10px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+             ถาม AI
+          </div>
         </div>
+
+        {/* 9 Cards */}
+        <div className="obs-grid">
+          {loading
+            ? Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)
+            : observatories.map(obs => <ObsCard key={obs.observatory_id} obs={obs} />)
+          }
+        </div>
+
       </main>
     </div>
-  );
+  )
 }
