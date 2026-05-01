@@ -31,3 +31,36 @@ export type AIResponse = {
   filter:               boolean    // กรองหน้าเว็บไหม
   details:              AIDetail[] // รายละเอียดแต่ละหอ
 }
+export type ChartData = {
+  times:       string[]
+  temperature: number[]
+  humidity:    number[]
+  wind_speed:  number[]
+  pressure:    number[]
+  rain:        number[]
+  uv:          number[]
+}
+
+export type DayData = {
+  date:          string
+  dayLabel:      string
+  isToday:       boolean
+  isPast:        boolean
+  tempMax:       number
+  tempMin:       number
+  humidity:      number
+  windSpeed:     number
+  rainSum:       number
+  cloudCover:    number
+  condition:     string
+  conditionIcon: string
+}
+
+export type SunMoonData = {
+  sunrise:      string
+  sunset:       string
+  moonPhase:    string
+  moonEmoji:    string
+  illumination: number
+  sunAltitude:  number
+}

@@ -1,119 +1,154 @@
-
-# ดึงข้อมูลอากาศจาก Open-Meteo API
-
-
 import os
 import requests
 import pymongo
 import schedule
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
-# โหลด .env.local
 load_dotenv('../.env.local')
 
-# เชื่อม MongoDB
 client = pymongo.MongoClient(os.getenv("MONGODB_URI"))
 db     = client["observatory_weather"]
-
 
 OBSERVATORIES = [
   { "id": "TNO", "name": "Thai National Observatory",   "lat": 18.57,  "lon": 98.48   },
   { "id": "APK", "name": "Astro Park Observatory",      "lat": 14.87,  "lon": 102.01  },
   { "id": "CCO", "name": "Chachoengsao Observatory",    "lat": 13.72,  "lon": 101.08  },
-  { "id": "SKA", "name": "Songkhla Observatory",         "lat": 7.16,   "lon": 100.61  },
-  { "id": "KKN", "name": "KhonKaen Observatory",         "lat": 16.43,  "lon": 102.82  },
-  { "id": "GAO", "name": "Gao Mei Gu Observatory",       "lat": 26.70,  "lon": 100.03  },
-  { "id": "SPB", "name": "Springbrook Observatory",      "lat": -28.22, "lon": 153.28  },
-  { "id": "SRO", "name": "Sierra Remote Observatories",  "lat": 36.97,  "lon": -119.40 },
-  { "id": "PR8", "name": "PROMPT-8",                     "lat": -30.16, "lon": -70.80  },
+  { "id": "SKA", "name": "Songkhla Observatory",        "lat": 7.16,   "lon": 100.61  },
+  { "id": "KKN", "name": "KhonKaen Observatory",        "lat": 16.43,  "lon": 102.82  },
+  { "id": "GAO", "name": "Gao Mei Gu Observatory",      "lat": 26.70,  "lon": 100.03  },
+  { "id": "SPB", "name": "Springbrook Observatory",     "lat": -28.22, "lon": 153.28  },
+  { "id": "SRO", "name": "Sierra Remote Observatories", "lat": 36.97,  "lon": -119.40 },
+  { "id": "PR8", "name": "PROMPT-8",                    "lat": -30.16, "lon": -70.80  },
 ]
 
-# ===== แปลง Cloud Cover เป็น Condition =====
 def get_condition(cloud: float) -> str:
   if cloud < 20: return "Clear"
   if cloud < 60: return "Partly Cloudy"
   if cloud < 85: return "Cloudy"
   return "Overcast"
 
-# ===== แปลงองศาลมเป็นทิศทาง =====
 def get_direction(degree: float) -> str:
   directions = ["N","NE","E","SE","S","SW","W","NW"]
   return directions[round(degree / 45) % 8]
 
-# ===== ดึงข้อมูล 1 หอ =====
-def fetch_weather(obs: dict) -> dict | None:
+def fetch_realtime(obs: dict):
   try:
-    url    = "https://api.open-meteo.com/v1/forecast"
-    params = {
+    res = requests.get("https://api.open-meteo.com/v1/forecast", params={
       "latitude":        obs["lat"],
       "longitude":       obs["lon"],
-      "current":         [
-        "temperature_2m",
-        "relative_humidity_2m",
-        "wind_speed_10m",
-        "wind_direction_10m",
-        "surface_pressure",
-        "precipitation",
-        "cloud_cover",
-        "uv_index"
-      ],
+      "current":         ["temperature_2m","relative_humidity_2m","wind_speed_10m","wind_direction_10m","surface_pressure","precipitation","cloud_cover","uv_index"],
       "wind_speed_unit": "ms",
       "timezone":        "auto",
-    }
-
-    res     = requests.get(url, params=params, timeout=10)
-    current = res.json().get("current", {})
-    cloud   = current.get("cloud_cover", 0)
-
+    }, timeout=10)
+    c     = res.json().get("current", {})
+    cloud = c.get("cloud_cover", 0)
     return {
       "observatory_id": obs["id"],
       "name":           obs["name"],
       "timestamp":      datetime.now(timezone.utc),
-      "temperature":    current.get("temperature_2m"),
-      "humidity":       current.get("relative_humidity_2m"),
-      "wind_speed":     current.get("wind_speed_10m"),
-      "wind_direction": get_direction(current.get("wind_direction_10m", 0)),
-      "pressure":       current.get("surface_pressure"),
-      "rain_rate":      current.get("precipitation", 0),
+      "temperature":    c.get("temperature_2m"),
+      "humidity":       c.get("relative_humidity_2m"),
+      "wind_speed":     c.get("wind_speed_10m"),
+      "wind_direction": get_direction(c.get("wind_direction_10m", 0)),
+      "pressure":       c.get("surface_pressure"),
+      "rain_rate":      c.get("precipitation", 0),
       "cloud_cover":    cloud,
-      "uv_index":       current.get("uv_index", 0),
+      "uv_index":       c.get("uv_index", 0),
       "condition":      get_condition(cloud),
       "seeing_dimm":    None,
       "source":         "open-meteo",
     }
   except Exception as e:
-    print(f"❌ Error {obs['id']}: {e}")
+    print(f"  ❌ Realtime {obs['id']}: {e}")
     return None
 
-# ===== บันทึกลง MongoDB =====
-def collect_realtime():
-  print(f"\n⚡ {datetime.now().strftime('%H:%M:%S')} — กำลังดึงข้อมูล...")
+def fetch_forecast(obs: dict):
+  try:
+    res = requests.get("https://api.open-meteo.com/v1/forecast", params={
+      "latitude":        obs["lat"],
+      "longitude":       obs["lon"],
+      "daily":           ["temperature_2m_max","temperature_2m_min","precipitation_sum","wind_speed_10m_max","relative_humidity_2m_mean","cloud_cover_mean","uv_index_max"],
+      "forecast_days":   15,
+      "wind_speed_unit": "ms",
+      "timezone":        "auto",
+    }, timeout=10)
+    data    = res.json().get("daily", {})
+    records = []
+    for i, date in enumerate(data.get("time", [])):
+      cloud = data.get("cloud_cover_mean", [])[i] or 0
+      records.append({
+        "observatory_id": obs["id"],
+        "name":           obs["name"],
+        "date":           date,
+        "updated_at":     datetime.now(timezone.utc),
+        "temp_max":       data.get("temperature_2m_max",        [])[i],
+        "temp_min":       data.get("temperature_2m_min",        [])[i],
+        "rain":           data.get("precipitation_sum",         [])[i] or 0,
+        "wind_max":       data.get("wind_speed_10m_max",        [])[i],
+        "humidity":       data.get("relative_humidity_2m_mean", [])[i],
+        "cloud_cover":    round(cloud),
+        "uv_index":       data.get("uv_index_max",              [])[i],
+        "condition":      get_condition(cloud),
+      })
+    return records
+  except Exception as e:
+    print(f"  ❌ Forecast {obs['id']}: {e}")
+    return []
 
+def collect_realtime():
+    print(f"\n⚡ {datetime.now().strftime('%H:%M:%S')} — Realtime...")
+    for obs in OBSERVATORIES:
+        r = fetch_realtime(obs)
+        if r:
+            # ... (โค้ด update_one / insert_one เดิมของคุณ) ...
+            
+            # --- แก้ไขตรงนี้เพื่อจัด Format Output ---
+            # ใช้การเว้นวรรคแบบคงที่ (Padding) เพื่อให้คอลัมน์ตรงกัน
+            obs_id = f"{obs['id']}:".ljust(5)
+            temp   = f"{r['temperature']}°C".ljust(8)
+            humid  = f"H:{r['humidity']}%".ljust(7)
+            cloud  = f"C:{r['cloud_cover']}%".ljust(7)
+            cond   = f"[{r['condition']}]"
+            
+            print(f"  ✅ {obs_id} {temp} {humid} {cloud} {cond}")
+        else:
+            # กรณี Error ให้พิมพ์สั้นๆ พอ
+            print(f"  ❌ {obs['id']}: Failed to fetch data")
+
+ 
+
+    print("Realtime เสร็จ")
+
+def collect_forecast():
+  print(f"\n🌤️ {datetime.now().strftime('%H:%M:%S')} — Forecast 15 วัน...")
   for obs in OBSERVATORIES:
-    record = fetch_weather(obs)
-    if record:
-      # upsert = ถ้ามีอยู่แล้วเขียนทับ ถ้าไม่มีสร้างใหม่
-      db.weather_realtime.update_one(
-        { "observatory_id": obs["id"] },
-        { "$set": record },
+    records = fetch_forecast(obs)
+    for r in records:
+      db.weather_forecast.update_one(
+        { "observatory_id": r["observatory_id"], "date": r["date"] },
+        { "$set": r },
         upsert=True
       )
-      print(f"  ✅ {obs['id']} → {record['temperature']}°C {record['condition']}")
+    if records:
+      print(f"  ✅ {obs['id']} → {len(records)} วัน")
 
-  print("✅ เสร็จแล้วครับ!\n")
+  db.weather_forecast.create_index(
+    [("observatory_id", 1), ("date", 1)], unique=True
+  )
+  print("✅ Forecast เสร็จครับ!")
 
-# ===== เริ่มทำงาน =====
 if __name__ == "__main__":
-  print("🚀 Observatory Weather Collector เริ่มทำงานแล้วครับ!")
-  print("⚡ ดึงข้อมูลทุก 15 นาที\n")
+  print(" Observatory Weather Collector เริ่มทำงานครับ!")
+  print("⚡ Realtime ทุก 1 นาที + บันทึก History")
+  print(" Forecast ทุก 1 ชั่วโมง\n")
 
-  # รันทันทีตอนเริ่ม
   collect_realtime()
+  collect_forecast()
 
-
-  schedule.every(15).minutes.do(collect_realtime)
+  schedule.every(1).minutes.do(collect_realtime)
+  schedule.every(1).minutes.do(collect_forecast)
 
   while True:
     schedule.run_pending()

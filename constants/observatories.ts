@@ -1,39 +1,55 @@
+// ===== Deep Space Dark Theme =====
+export const COLORS = {
+  // Backgrounds
+  bg:     '#040812',   // ดำสุด base
+  bg2:    '#080f1e',   // layer 2
+  card:   '#0d1829',   // card bg
+  cardHover: '#121f36', // card hover
 
-// ข้อมูลหอดูดาวทั้งหมด
+  // Accent Purple
+  accent:  '#6C63FF',  // primary CTA
+  accent2: '#9D94FF',  // secondary
+  accent3: '#C5BFFF',  // light labels
 
+  // Teal
+  teal:    '#06D6A0',  // success / score
+  teal2:   '#2EFFCE',  // highlight
+  tealDim: '#054a3a',  // dim teal
 
-// ลำดับการแสดงบนหน้าแรก
-export const OBSERVATORY_ORDER = [
-  'TNO', 'APK', 'CCO', 'SKA', 'KKN', 'GAO', 'SPB', 'SRO', 'PR8'
+  // Gold
+  gold:    '#FFD166',  // best / achievement
+  gold2:   '#FFA500',  // warning
+
+  // Text
+  text:    '#EAF4FF',  // primary
+  text2:   '#8AAAC8',  // secondary
+  text3:   '#4A6A8A',  // muted
+
+  // Status
+  good:    '#06D6A0',  // score >= 70
+  fair:    '#FFD166',  // score 40-69
+  poor:    '#FF6B6B',  // score < 40
+
+  // Legacy (compat)
+  mid:     '#07090e',
+}
+
+export const OBSERVATORIES = [
+  { id: 'TNO', name: 'Thai National Observatory',   country: '🇹🇭', lat: 18.57,  lon: 98.48   },
+  { id: 'APK', name: 'Astro Park Observatory',      country: '🇹🇭', lat: 14.87,  lon: 102.01  },
+  { id: 'CCO', name: 'Chachoengsao Observatory',    country: '🇹🇭', lat: 13.72,  lon: 101.08  },
+  { id: 'SKA', name: 'Songkhla Observatory',         country: '🇹🇭', lat: 7.16,   lon: 100.61  },
+  { id: 'KKN', name: 'KhonKaen Observatory',         country: '🇹🇭', lat: 16.43,  lon: 102.82  },
+  { id: 'GAO', name: 'Gao Mei Gu Observatory',       country: '🇨🇳', lat: 26.70,  lon: 100.03  },
+  { id: 'SPB', name: 'Springbrook Observatory',      country: '🇦🇺', lat: -28.22, lon: 153.28  },
+  { id: 'SRO', name: 'Sierra Remote Observatories',  country: '🇺🇸', lat: 36.97,  lon: -119.40 },
+  { id: 'PR8', name: 'PROMPT-8',                     country: '🇨🇱', lat: -30.16, lon: -70.80  },
 ]
 
-// พิกัดแต่ละหอ สำหรับดึงข้อมูลอากาศ
-export const OBS_COORDS: Record<string, {
-  lat:  number
-  lon:  number
-  name: string
-  country: string
-}> = {
-    TNO: { lat: 18.57,  lon: 98.48,   name: 'Thai National Observatory',   country: 'Thailand' },
-  APK: { lat: 14.87,  lon: 102.01,  name: 'Astro Park Observatory',      country: 'Thailand'   },
-  CCO: { lat: 13.72,  lon: 101.08,  name: 'Chachoengsao Observatory',    country: 'Thailand'   },
-  SKA: { lat: 7.16,   lon: 100.61,  name: 'Songkhla Observatory',        country: 'Thailand'   },
-  KKN: { lat: 16.43,  lon: 102.82,  name: 'KhonKaen Observatory',        country: 'Thailand'   },
-  GAO: { lat: 26.70,  lon: 100.03,  name: 'Gao Mei Gu Observatory',      country: 'China'      },
-  SPB: { lat: -28.22, lon: 153.28,  name: 'Springbrook Observatory',     country: 'Australia'  },
-  SRO: { lat: 36.97,  lon: -119.40, name: 'Sierra Remote Observatories', country: 'USA'        },
-  PR8: { lat: -30.16, lon: -70.80,  name: 'PROMPT-8',                    country: 'Chile'      },
-}
-
-
-// สีธีมหลัก
-export const COLORS = {
-  teal: '#4fd1c5',
-  bg:   '#060810',
-  tealDim:'#2a6b66',
-  card: '#0d1219',
-  mid:  '#07090e',
-}
+export const OBS_COORDS = OBSERVATORIES.reduce((acc, o) => {
+  acc[o.id] = { lat: o.lat, lon: o.lon, country: o.country }
+  return acc
+}, {} as Record<string, { lat: number; lon: number; country: string }>)
 
 export const CONDITION_ICON: Record<string, string> = {
   'Clear':         '🌙',
@@ -42,5 +58,12 @@ export const CONDITION_ICON: Record<string, string> = {
   'Overcast':      '🌥️',
 }
 
-// Auto Refresh
-export const REFRESH_INTERVAL = 50 * 60 * 1000
+export const REFRESH_INTERVAL = 1 * 60 * 1000
+
+export function scoreColor(score: number): string {
+  if (score >= 70) return COLORS.good
+  if (score >= 40) return COLORS.fair
+  return COLORS.poor
+}
+
+export const OBSERVATORY_ORDER = ['TNO','APK','CCO','SKA','KKN','GAO','SPB','SRO','PR8']

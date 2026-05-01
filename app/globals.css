@@ -1,5 +1,6 @@
 
 
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -12,6 +13,31 @@ body {
   font-family: 'DM Sans', 'Helvetica Neue', sans-serif;
 }
 
-/* ซ่อน Scrollbar แต่ยังเลื่อนได้ครับ */
+/* ซ่อน Scrollbar แต่ยังเลื่อนได้ */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-thumb { background: rgba(79,209,197,0.2); border-radius: 2px; }
+.star-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.nebula {
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  opacity: var(--op);
+  animation: twinkle var(--dur) var(--delay) infinite alternate;
+}
+
+@keyframes twinkle {
+  from { opacity: var(--op); }
+  to   { opacity: 0; }
+}

@@ -12,11 +12,11 @@ export function WorldMap({ observatories }: WorldMapProps) {
   const mapRef     = useRef<HTMLDivElement>(null)
   const mapObjRef  = useRef<any>(null)
   const markersRef = useRef<any[]>([])
-  const initedRef  = useRef(false)  // ← ป้องกันสร้างซ้ำครับ
+  const initedRef  = useRef(false)
 
   useEffect(() => {
     if (!mapRef.current || initedRef.current) return
-    initedRef.current = true  
+    initedRef.current = true
 
     import('leaflet').then(L => {
       const link = document.createElement('link')
@@ -25,13 +25,13 @@ export function WorldMap({ observatories }: WorldMapProps) {
       document.head.appendChild(link)
 
       const map = L.map(mapRef.current!, {
-        center:             [20, 20],   
+        center:             [20, 20],
         zoom:               2,
         minZoom:            2,
         maxZoom:            10,
         zoomControl:        true,
         attributionControl: false,
-        })
+      })
 
       L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -65,25 +65,40 @@ export function WorldMap({ observatories }: WorldMapProps) {
       const color = scoreToColor(score)
       const label = scoreToLabel(score)
 
+      
+      const condIcon =
+        obs.condition === 'Clear'         ? '☀️' :
+        obs.condition === 'Partly Cloudy' ? '⛅' :
+        obs.condition === 'Overcast'      ? '🌥️' :
+        obs.condition === 'Rain'          ? '🌧️' : '🌫️'
+
       const icon = L.divIcon({
         className: '',
-        html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 8px ${color};"></div>`,
+        html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 8px ${color};cursor:pointer;"></div>`,
         iconSize: [16, 16], iconAnchor: [8, 8],
       })
 
-      const marker = L.marker([coords.lat, coords.lon], { icon })
-        .addTo(map)
-        .bindPopup(`
-          <div style="background:#0d1219;color:#f1f5f9;border-radius:10px;padding:12px;min-width:180px;font-family:sans-serif;">
-            <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${obs.name}</div>
-            <div style="font-size:11px;color:#64748b;margin-bottom:8px;">${coords.country}</div>
-            <div style="font-size:24px;font-weight:200;color:#fff;margin-bottom:4px;">${obs.temperature?.toFixed(1)}°C</div>
-            <div style="color:#94a3b8;font-size:12px;margin-bottom:8px;">${obs.condition}</div>
-            <div style="display:inline-block;background:${color}20;border:1px solid ${color}60;border-radius:6px;padding:3px 10px;font-size:12px;color:${color};font-weight:600;">
-              Score ${score}/100 — ${label}
-            </div>
+      const popupContent = `
+        <div style="background:#0d1219;color:#f1f5f9;border-radius:10px;padding:14px;min-width:190px;font-family:sans-serif;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:8px;">${obs.name}</div>
+          <div style="font-size:28px;font-weight:200;color:#fff;margin-bottom:4px;">${obs.temperature?.toFixed(1)}°C</div>
+          <div style="color:#94a3b8;font-size:13px;margin-bottom:10px;">${condIcon} ${obs.condition}</div>
+          <div style="display:flex;gap:12px;font-size:12px;color:#64748b;margin-bottom:10px;">
+            <span>💧 ${obs.humidity}%</span>
+            <span>💨 ${obs.wind_speed} m/s</span>
           </div>
-        `, { className: 'custom-popup' })
+          <div style="display:inline-block;background:${color}20;border:1px solid ${color}60;border-radius:6px;padding:3px 10px;font-size:12px;color:${color};font-weight:600;">
+            ${score}% — ${label}
+          </div>
+        </div>
+      `
+
+      const marker = L.marker([coords.lat, coords.lon], { icon }).addTo(map)
+
+      // hover แทน click
+      marker.bindPopup(popupContent, { className: 'custom-popup', closeButton: false })
+      marker.on('mouseover', function() { marker.openPopup() })
+      marker.on('mouseout',  function() { marker.closePopup() })
 
       markersRef.current.push(marker)
     })
@@ -95,9 +110,9 @@ export function WorldMap({ observatories }: WorldMapProps) {
         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4fd1c5' }}/>
         <span style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>Real-time Observatory Map</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '12px', fontSize: '11px' }}>
-          <span style={{ color: '#4ade80' }}>🟢 พร้อม</span>
-          <span style={{ color: '#fbbf24' }}>🟡 พอใช้</span>
-          <span style={{ color: '#f87171' }}>🔴 ไม่พร้อม</span>
+          <span style={{ color: '#4ade80' }}>● พร้อม</span>
+          <span style={{ color: '#fbbf24' }}>● พอใช้</span>
+          <span style={{ color: '#f87171' }}>● ไม่พร้อม</span>
         </div>
       </div>
       <div ref={mapRef} style={{ height: '420px' }} />
