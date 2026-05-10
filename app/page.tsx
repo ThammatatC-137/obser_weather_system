@@ -48,24 +48,22 @@ export default function Home() {
       <Sidebar activeId="all" />
       <main className="main-layout">
 
-        {/* Header */}
+        {/* Header — ✅ แก้: nowrap + ลบ updated/count ออก */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexShrink: 0 }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="4" fill={COLORS.teal} />
-          <line x1="12" y1="2"  x2="12" y2="5"  stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
-          <line x1="12" y1="19" x2="12" y2="22" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
-          <line x1="2"  y1="12" x2="5"  y2="12" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
-          <line x1="19" y1="12" x2="22" y2="12" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
-          <line x1="4.22"  y1="4.22"  x2="6.34"  y2="6.34"  stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
-          <line x1="17.66" y1="17.66" x2="19.78" y2="19.78" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
-          <line x1="19.78" y1="4.22"  x2="17.66" y2="6.34"  stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
-          <line x1="6.34"  y1="17.66" x2="4.22"  y2="19.78" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
-        </svg>
-          <h1 style={{ fontSize: '36px', fontWeight: '700', color: '#ffffff', letterSpacing: '-0.02em' }}>Weather Report</h1>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {lastUpdate && <span style={{ fontSize: '11px', color: '#2a4a4a' }}>Updated {lastUpdate}</span>}
-            <span style={{ fontSize: '11px', color: '#1e3030', letterSpacing: '0.1em', fontWeight: '600' }}>{observatories.length} OBSERVATORIES</span>
-          </div>
+            <circle cx="12" cy="12" r="4" fill={COLORS.teal} />
+            <line x1="12" y1="2"  x2="12" y2="5"  stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
+            <line x1="12" y1="19" x2="12" y2="22" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
+            <line x1="2"  y1="12" x2="5"  y2="12" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
+            <line x1="19" y1="12" x2="22" y2="12" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
+            <line x1="4.22"  y1="4.22"  x2="6.34"  y2="6.34"  stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
+            <line x1="17.66" y1="17.66" x2="19.78" y2="19.78" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
+            <line x1="19.78" y1="4.22"  x2="17.66" y2="6.34"  stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
+            <line x1="6.34"  y1="17.66" x2="4.22"  y2="19.78" stroke={COLORS.teal} strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <h1 style={{ fontSize: '36px', fontWeight: '700', color: '#ffffff', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+            Weather Report
+          </h1>
         </div>
 
         {/* แผนที่ */}

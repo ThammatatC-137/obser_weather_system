@@ -1,36 +1,44 @@
-// กำหนดหน้าตาของข้อมูลทั้งหมดในโปรเจกต์
-
-
-// ข้อมูลหอดูดาว 1 แห่ง
 export type Observatory = {
-  observatory_id: string    // รหัสย่อ เช่น "TNO"
-  name:           string    // ชื่อเต็ม
-  timestamp:      string    // เวลาที่บันทึก
-  temperature:    number    // อุณหภูมิ °C
-  humidity:       number    // ความชื้น %
-  wind_speed:     number    // ความเร็วลม m/s
-  wind_direction: string    // ทิศทางลม เช่น "NE"
-  pressure:       number    // ความดันอากาศ hPa
-  rain_rate:      number    // ปริมาณฝน mm
-  cloud_cover:    number    // ความหนาแน่นเมฆ %
-  uv_index:       number    // ค่า UV
-  condition:      string    // สภาพอากาศ เช่น "Clear"
-  seeing_dimm:    number | null  // ค่า Seeing (อาจไม่มี)
+  observatory_id: string
+  name:           string
+  timestamp:      string
+  temperature:    number
+  humidity:       number
+  wind_speed:     number
+  wind_direction: string
+  pressure:       number
+  rain_rate:      number
+  cloud_cover:    number
+  uv_index:       number
+  condition:      string
+  seeing_dimm:    number | null
+  score?:         number
+
+  // รูปจาก NARIT
+  narit_image_url?:    string 
+  narit_sky_status?:   string
+  narit_score_clear?:  number
+  narit_score_cloudy?: number
+  narit_score_partly?: number
+  narit_score_rain?:   number
+  dew_point?:          number
+  solar_rad?:          number
+  daily_rain?:         number
 }
 
-// ผลลัพธ์จาก AI
 export type AIDetail = {
-  id:     string                          // รหัสหอ
-  status: 'ready' | 'not_ready' | 'partial'  // สถานะ
-  reason: string                          // เหตุผล
+  id:     string
+  status: 'ready' | 'not_ready' | 'partial'
+  reason: string
 }
 
 export type AIResponse = {
-  answer:               string     // คำตอบจาก AI
-  ready_observatories:  string[]   // หอที่พร้อม
-  filter:               boolean    // กรองหน้าเว็บไหม
-  details:              AIDetail[] // รายละเอียดแต่ละหอ
+  answer:               string
+  ready_observatories:  string[]
+  filter:               boolean
+  details:              AIDetail[]
 }
+
 export type ChartData = {
   times:       string[]
   temperature: number[]
@@ -57,10 +65,15 @@ export type DayData = {
 }
 
 export type SunMoonData = {
-  sunrise:      string
-  sunset:       string
+  sunrise:      string   // formatted สำหรับ display (th-TH HH:mm)
+  sunset:       string   // formatted สำหรับ display (th-TH HH:mm)
+  sunriseISO:   string   // ← เพิ่ม: ISO string สำหรับ getSunPosition / getSunAltitude
+  sunsetISO:    string   // ← เพิ่ม: ISO string สำหรับ getSunPosition / getSunAltitude
   moonPhase:    string
   moonEmoji:    string
   illumination: number
   sunAltitude:  number
+  moonAltitude?: number
+  moonrise?:    string
+  moonset?:     string
 }

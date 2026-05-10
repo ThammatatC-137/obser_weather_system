@@ -1,6 +1,3 @@
-// lib/skyPhoto.ts
-// เลือกรูปท้องฟ้าตามสภาพอากาศ + เวลา
-
 const SKY_PHOTOS: Record<string, string[]> = {
   Clear_night: [
     'https://images.unsplash.com/photo-1538370965046-79c0d6907d47?w=600&q=80',
@@ -30,7 +27,15 @@ const SKY_PHOTOS: Record<string, string[]> = {
   ],
 }
 
-export function getSkyPhoto(condition: string, timestamp: string): string {
+export function getSkyPhoto(
+  condition: string,
+  timestamp: string,
+  naritImageUrl?: string  // รูปจริงจาก NARIT
+): string {
+  // ถ้ามีรูปจาก NARIT ให้ใช้เลยครับ
+  if (naritImageUrl) return naritImageUrl
+
+  // fallback รูป Unsplash เดิม
   const hour    = new Date(timestamp).getHours()
   const isNight = hour < 6 || hour >= 18
   const key     = `${condition}_${isNight ? 'night' : 'day'}`
