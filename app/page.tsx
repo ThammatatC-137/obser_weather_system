@@ -48,7 +48,7 @@ export default function Home() {
       <Sidebar activeId="all" />
       <main className="main-layout">
 
-        {/* Header — ✅ แก้: nowrap + ลบ updated/count ออก */}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexShrink: 0 }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="4" fill={COLORS.teal} />

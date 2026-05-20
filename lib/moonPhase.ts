@@ -1,13 +1,13 @@
-// ─────────────────────────────────────────────────────────────────────────────
+
 // moonPhase.ts — คำนวณ Moon phase, Sun position, Sun altitude
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 function getMoonIllumination(date: Date): { fraction: number; phase: number } {
   const rad = Math.PI / 180
   const e   = 23.4397 * rad
 
   function toDays(d: Date) {
-    return d.getTime() / 86400000 - 10957.5  // ✅ J2000 offset ถูกต้อง
+    return d.getTime() / 86400000 - 10957.5  
   }
   function solarMeanAnomaly(d: number) {
     return rad * (357.5291 + 0.98560028 * d)
@@ -54,7 +54,7 @@ function getMoonIllumination(date: Date): { fraction: number; phase: number } {
 export function getMoonPhase(date: Date) {
   const { fraction, phase } = getMoonIllumination(date)
 
-  // ✅ ทศนิยม 2 ตำแหน่ง
+
   const illumination = Math.round(fraction * 10000) / 100
 
   let phaseName = '', emoji = ''
@@ -78,7 +78,7 @@ export function getSunPosition(sunriseISO: string, sunsetISO: string): number {
   return Math.max(0, Math.min(100, ((now - rise) / (set - rise)) * 100))
 }
 
-// ✅ รับ lat/lon เพื่อคำนวณแม่น เหมือน SunCalc จริงๆ
+
 export function getSunAltitude(sunriseISO: string, sunsetISO: string, lat: number, lon: number): number {
   const rad = Math.PI / 180
   const now = new Date()

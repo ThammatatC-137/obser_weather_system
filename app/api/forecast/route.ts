@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       .collection('weather_forecast')
       .find({ observatory_id: id })
       .sort({ date: 1 })
-      .limit(20)
+      .limit(60)
       .toArray()
 
     return NextResponse.json({ success: true, data: records })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { connectDB } from "@/lib/mongodb"
 import mongoose from "mongoose"
+import { calcScore, scoreToLabel } from "@/lib/obsScore"
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +19,6 @@ export async function POST(request: Request) {
       .sort({ observatory_id: 1, date: 1 })
       .toArray()
 
-    // ดึง Historical (weather_history ถ้ามี หรือใช้ realtime เก่า)
     let historicalInfo = 'ไม่มีข้อมูลย้อนหลังในระบบครับ'
     try {
       const history = await db.collection('weather_history')
@@ -41,29 +41,26 @@ export async function POST(request: Request) {
       )
     })
 
-    const realtimeInfo = observatories.map((o: any) =>
-      `- ${o.name} (${o.observatory_id})
-   Score: ${o.score}/100
-   อุณหภูมิ: ${o.temperature}°C | เมฆ: ${o.cloud_cover}% | ความชื้น: ${o.humidity}%
-   ลม: ${o.wind_speed} m/s | ฝน: ${o.rain_rate} mm | สภาพ: ${o.condition}`
-    ).join('\n\n')
+
+    const realtimeInfo = observatories.map((o: any) => {
+      const score = calcScore(o)
+      const label = scoreToLabel(score)
+      return `- ${o.name} (${o.observatory_id})
+   สถานะ: ${label} (${score}/100)
+   เมฆ: ${o.cloud_cover}% | ความชื้น: ${o.humidity}% | ฝน: ${o.rain_rate} mm | สภาพ: ${o.condition}`
+    }).join('\n\n')
 
     const forecastInfo = observatories.map((o: any) => {
-     const days = (forecastMap[o.observatory_id] || []).slice(0, 7)
+      const days = (forecastMap[o.observatory_id] || []).slice(0, 7)
       return `- ${o.name} (${o.observatory_id}):\n${days.join('\n')}`
     }).join('\n\n')
 
-    const prompt = `คุณเป็น AI ผู้เชี่ยวชาญวิเคราะห์สภาพอากาศสำหรับการดูดาวที่หอดูดาว NARIT ครับ
-
-===== แหล่งข้อมูลที่มีอยู่ =====
-1. Realtime (ปัจจุบัน) — ดึงจาก MongoDB collection: weather_realtime อัปเดตทุก 1 นาที
-2. Forecast (อนาคต 15 วัน) — ดึงจาก MongoDB collection: weather_forecast อัปเดตทุก 1 ชั่วโมง
-3. Historical (อดีต) — ดึงจาก MongoDB collection: weather_history
+    const prompt = `คุณเป็น AI ช่วยวิเคราะห์สภาพอากาศสำหรับดูดาวที่หอดูดาว NARIT ครับ ตอบแบบเพื่อนคุยกัน สั้น กระชับ เข้าใจง่าย
 
 ===== ข้อมูล Realtime ตอนนี้ =====
 ${realtimeInfo}
 
-===== พยากรณ์อากาศ 15 วันข้างหน้า =====
+===== พยากรณ์อากาศ วันข้างหน้า =====
 ${forecastInfo}
 
 ===== ข้อมูลย้อนหลัง =====
@@ -71,33 +68,35 @@ ${historicalInfo}
 
 คำถาม: ${question}
 
-กรุณาตอบเป็นภาษาไทย โดย:
-1. บอกว่าดึงข้อมูลมาจากแหล่งไหน (Realtime / Forecast / Historical)
-2. รายงานค่าตัวเลขจริงๆ เช่น เมฆ XX%, ความชื้น XX%, ลม XX m/s, ฝน XX mm, Score XX/100
-3. อธิบายเหตุผลที่วิเคราะห์ว่าพร้อม/ไม่พร้อมเพราะอะไร
-4. สรุปผลชัดเจนว่าหอไหนแนะนำ
+กฎการตอบ:
+- ตอบภาษาไทย สั้นๆ เหมือนเพื่อนคุยกัน ไม่เกิน 5 ประโยค
+- หอที่ "พร้อม" คือ score >= 70, "พอใช้" คือ 40-69, "ไม่พร้อม" คือ < 40
+- โฟกัสแค่หอที่ดีที่สุด หรือที่ถามถึง ไม่ต้องรายงานทุกหอ
+- ใช้ตัวเลขแค่ที่จำเป็น เช่น เมฆ 0% หรือ ฝน 0 mm
+- ห้ามใช้ ** หรือ ### หรือหัวข้อลำดับ 1. 2. 3.
+- ลงท้ายด้วย "ครับ" เป็นธรรมชาติ
 
 แล้วต่อท้ายด้วย FILTER_IDS: คั่นด้วยคอมมา เช่น FILTER_IDS: TNO,SRO
 ถ้าไม่ต้องกรองให้ใส่ FILTER_IDS: none`
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch('https://lllm.narit.or.th/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Authorization': `Bearer ${process.env.LITELLM_API_KEY}`,
       },
       body: JSON.stringify({
-        model:       'llama-3.3-70b-versatile',
+        model:       'deepseek-v4-flash-think',
         messages:    [{ role: 'user', content: prompt }],
-        max_tokens:  800,
+        max_tokens:  8000,
         temperature: 0.5,
       }),
     })
 
     if (!res.ok) {
-     const errText = await res.text()
-      console.error('Groq error:', res.status, errText)
-      return NextResponse.json({ answer: `Groq error ${res.status}: ${errText}`, filter: [] })
+      const errText = await res.text()
+      console.error('LiteLLM error:', res.status, errText)
+      return NextResponse.json({ answer: `Error ${res.status}: ${errText}`, filter: [] })
     }
 
     const data    = await res.json()

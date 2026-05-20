@@ -38,7 +38,7 @@ def get_direction(degree: float) -> str:
   directions = ["N","NE","E","SE","S","SW","W","NW"]
   return directions[round(degree / 45) % 8]
 
-# ── NARIT Realtime ──────────────────────────────
+# ── NARIT Realtime 
 def fetch_narit_weather(obs: dict) -> dict | None:
   try:
     station = NARIT_STATION.get(obs['id'])
@@ -74,7 +74,7 @@ def fetch_narit_weather(obs: dict) -> dict | None:
     print(f"  ❌ NARIT Weather {obs['id']}: {e}")
     return None
 
-# ── NARIT SkyCamera ─────────────────────────────
+# ── NARIT SkyCamera 
 def fetch_skycamera(obs_id: str) -> dict:
   try:
     station = NARIT_STATION.get(obs_id)
@@ -111,7 +111,7 @@ def fetch_skycamera(obs_id: str) -> dict:
     print(f"  ❌ SkyCamera {obs_id}: {e}")
     return {}
 
-# ── Forecast Open-Meteo (daily) ─────────────────
+# ── Forecast Open-Meteo (daily)
 def fetch_forecast(obs: dict) -> list:
   try:
     res = requests.get("https://api.open-meteo.com/v1/forecast", params={
@@ -147,7 +147,7 @@ def fetch_forecast(obs: dict) -> list:
     print(f"  ❌ Forecast {obs['id']}: {e}")
     return []
 
-# ── ✅ Hourly History Open-Meteo — เก็บรายชั่วโมง ──
+# ── Hourly Open-Meteo — ใช้ได้ทั้งอดีตและอนาคต
 def fetch_hourly_history(obs: dict, date: str) -> list:
   try:
     res = requests.get("https://api.open-meteo.com/v1/forecast", params={
@@ -166,7 +166,7 @@ def fetch_hourly_history(obs: dict, date: str) -> list:
       records.append({
         "observatory_id": obs["id"],
         "date":           date,
-        "timestamp":      t,                              # "2026-05-07T00:00"
+        "timestamp":      t,
         "temperature":    h.get("temperature_2m",       [])[i],
         "humidity":       h.get("relative_humidity_2m", [])[i],
         "dew_point":      h.get("dew_point_2m",         [])[i],
@@ -182,7 +182,7 @@ def fetch_hourly_history(obs: dict, date: str) -> list:
     print(f"  ❌ Hourly {obs['id']} {date}: {e}")
     return []
 
-# ── Jobs ────────────────────────────────────────
+# ── Jobs
 def collect_realtime():
   print(f"\n⚡ {datetime.now().strftime('%H:%M:%S')} — Realtime (NARIT)...")
   for obs in OBSERVATORIES:
@@ -216,7 +216,7 @@ def collect_realtime():
   print("✅ Realtime เสร็จครับ!")
 
 def collect_forecast():
-  print(f"\n🌤️ {datetime.now().strftime('%H:%M:%S')} — Forecast (Open-Meteo)...")
+  print(f"\n{datetime.now().strftime('%H:%M:%S')} — Forecast (Open-Meteo)...")
   for obs in OBSERVATORIES:
     records = fetch_forecast(obs)
     for r in records:
@@ -231,11 +231,10 @@ def collect_forecast():
   )
   print("✅ Forecast เสร็จครับ!")
 
-# ── ✅ เก็บ Hourly ย้อนหลัง 7 วัน ──────────────
 def collect_hourly_history():
   print(f"\n{datetime.now().strftime('%H:%M:%S')} — Hourly History (Open-Meteo)...")
   today = datetime.now(timezone.utc).date()
-  # เก็บย้อนหลัง 7 วัน (ไม่รวมวันนี้ เพราะใช้ weather_history จาก NARIT)
+  
   dates = [(today - timedelta(days=i)).isoformat() for i in range(1, 8)]
 
   for obs in OBSERVATORIES:
@@ -265,22 +264,46 @@ def collect_hourly_history():
   db.weather_hourly.delete_many({"date": {"$lt": cutoff_date}})
   print("✅ Hourly History เสร็จ")
 
-# ── Main ────────────────────────────────────────
+# เก็บ hourly อนาคต 7 วัน ทุก 1 ชั่วโมง
+def collect_hourly_future():
+  print(f"\n{datetime.now().strftime('%H:%M:%S')} — Hourly Future (Open-Meteo)...")
+  today = datetime.now(timezone.utc).date()
+  # วันนี้ + 7 วันข้างหน้า
+  dates = [(today + timedelta(days=i)).isoformat() for i in range(0, 8)]
+
+  for obs in OBSERVATORIES:
+    for date in dates:
+      records = fetch_hourly_history(obs, date)
+      for r in records:
+        db.weather_hourly.update_one(
+          {"observatory_id": r["observatory_id"], "timestamp": r["timestamp"]},
+          {"$set": r}, upsert=True
+        )
+    print(f"  ✅ {obs['id']} → 8 วันข้างหน้า")
+
+  # ลบอนาคตที่เก่ากว่าวันนี้ออก (กันข้อมูลเก่าค้าง)
+  cutoff_future = (today - timedelta(days=1)).isoformat()
+  db.weather_hourly.delete_many({"date": {"$lt": cutoff_future}})
+  print("✅ Hourly Future เสร็จ")
+
+# ── Main 
 if __name__ == "__main__":
   print("Observatory Weather Collector เริ่มทำงานครับ!")
   print("⚡ Realtime + History: NARIT API ทุก 1 นาที")
   print("Forecast: Open-Meteo ทุก 1 ชั่วโมง")
-  print("Hourly History: Open-Meteo ทุก 6 ชั่วโมง\n")
+  print("Hourly History: Open-Meteo ทุก 6 ชั่วโมง")
+  print("Hourly Future: Open-Meteo ทุก 1 ชั่วโมง\n")
 
-  
   collect_realtime()
   collect_forecast()
-  collect_hourly_history()  
+  collect_hourly_history()
+  collect_hourly_future()
 
   # Schedule
   schedule.every(1).minutes.do(collect_realtime)
   schedule.every(1).hours.do(collect_forecast)
-  schedule.every(6).hours.do(collect_hourly_history)  
+  schedule.every(6).hours.do(collect_hourly_history)
+  schedule.every(1).hours.do(collect_hourly_future)
 
   while True:
     schedule.run_pending()

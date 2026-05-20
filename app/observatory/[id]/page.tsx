@@ -2,13 +2,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Sidebar      from '@/components/Sidebar'
-import { StatCard } from '@/components/StatCard'
 import { Observatory, SunMoonData, DayData } from '@/types'
 import { COLORS, OBS_COORDS, REFRESH_INTERVAL } from '@/constants/observatories'
 import { getSkyPhoto } from '@/lib/skyPhoto'
 import { getMoonPhase, getSunPosition, getSunAltitude } from '@/lib/moonPhase'
 import { DayCard }    from '@/components/DayCard'
 import { SparkChart } from '@/components/SparkChart'
+import ObsAiChat from '@/components/ObsAiChat'
 import { formatDayLabel } from '@/lib/moonPhase'
 
 // ดูขนาดหน้าจอแบบ real-time
@@ -432,7 +432,7 @@ export default function ObservatoryDetail() {
         )}
       </div>
 
-      {/* ✅ เพิ่ม: ห่อ SVG ด้วย div เพื่อให้ HTML tooltip ลอยได้ */}
+      
       <div style={{ position: 'relative' }}>
         <svg width="100%" height={isMobile ? '55' : isTablet ? '70' : '90'} viewBox="0 0 320 100">
           <line x1="0" y1="90" x2="320" y2="90" stroke="rgba(6,214,160,0.15)" strokeWidth="1" />
@@ -451,7 +451,6 @@ export default function ObservatoryDetail() {
           )}
         </svg>
 
-        {/* ✅ เพิ่ม: HTML tooltip ลอยเหมือนกราฟ */}
         {isDaytime && sunHov && (
           <div style={{
             position: 'absolute',
@@ -626,6 +625,13 @@ export default function ObservatoryDetail() {
             <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px', textAlign: 'center', padding: '40px' }}>ไม่มีข้อมูลกราฟ</div>
           )}
         </div>
+        {/* AI ผู้ช่วย */}
+        <div style={{ padding: `0 ${px} ${isMobile ? '80px' : '40px'}` }}>
+          <div style={{ fontSize: '11px', color: 'rgba(6,214,160,0.6)', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '16px' }}>
+            AI ผู้ช่วยหอดูดาว
+          </div>
+          <ObsAiChat obs={obs} />
+        </div>
 
       </main>
     </div>
@@ -671,5 +677,6 @@ function HeroImage({ skyPhoto, obs, ObsIcon, selectedDate, statusLabel, heroTemp
         )}
       </div>
     </div>
+    
   )
 }
