@@ -24,29 +24,30 @@ export type Observatory = {
   dew_point?:          number
   solar_rad?:          number
   daily_rain?:         number
+
+  // CNN prediction
+  cnn_prediction?:          string  
+  cnn_confidence?:          number  
+  cnn_score_clear?:         number
+  cnn_score_partly_cloudy?: number
+  cnn_score_cloudy?:        number
+  cnn_score_rain?:          number
+  cnn_updated_at?:          string
+
+  // Star Count (OpenCV)
+  star_count?:      number
+  star_updated_at?: string
 }
 
-export type AIDetail = {
-  id:     string
-  status: 'ready' | 'not_ready' | 'partial'
-  reason: string
-}
-
-export type AIResponse = {
-  answer:               string
-  ready_observatories:  string[]
-  filter:               boolean
-  details:              AIDetail[]
-}
-
-export type ChartData = {
-  times:       string[]
-  temperature: number[]
-  humidity:    number[]
-  wind_speed:  number[]
-  pressure:    number[]
-  rain:        number[]
-  uv:          number[]
+export type SunMoonData = {
+  sunrise:      string
+  sunset:       string
+  sunriseISO:   string
+  sunsetISO:    string
+  moonPhase:    string
+  moonEmoji:    string
+  illumination: number
+  sunAltitude:  number
 }
 
 export type DayData = {
@@ -62,18 +63,4 @@ export type DayData = {
   cloudCover:    number
   condition:     string
   conditionIcon: string
-}
-
-export type SunMoonData = {
-  sunrise:      string   // formatted สำหรับ display (th-TH HH:mm)
-  sunset:       string   // formatted สำหรับ display (th-TH HH:mm)
-  sunriseISO:   string   // ← เพิ่ม: ISO string สำหรับ getSunPosition / getSunAltitude
-  sunsetISO:    string   // ← เพิ่ม: ISO string สำหรับ getSunPosition / getSunAltitude
-  moonPhase:    string
-  moonEmoji:    string
-  illumination: number
-  sunAltitude:  number
-  moonAltitude?: number
-  moonrise?:    string
-  moonset?:     string
 }

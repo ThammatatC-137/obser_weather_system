@@ -11,7 +11,7 @@ MODEL_PATH  = Path("sky_model.pth")
 BATCH_SIZE  = 32
 EPOCHS      = 15
 IMG_SIZE    = 224
-CLASSES     = ["clear", "cloudy", "rain"]
+CLASSES = ["clear", "cloudy", "partly_cloudy", "rain"]
 
 # augmentation สำหรับ train
 train_tf = transforms.Compose([
@@ -41,7 +41,7 @@ def main():
 
     # โหลด dataset
     full_dataset = datasets.ImageFolder(DATASET_DIR, transform=train_tf)
-    print(f"📊 Dataset: {len(full_dataset)} รูป")
+    print(f" Dataset: {len(full_dataset)} รูป")
     for cls, idx in full_dataset.class_to_idx.items():
         count = sum(1 for _, l in full_dataset.samples if l == idx)
         print(f"   {cls}: {count} รูป")
@@ -71,7 +71,7 @@ def main():
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
     best_acc = 0.0
-    print(f"\n🚀 เริ่ม Train {EPOCHS} epochs...")
+    print(f"\n เริ่ม Train {EPOCHS} epochs...")
     print("-" * 50)
 
     for epoch in range(EPOCHS):
@@ -113,12 +113,12 @@ def main():
                 'class_to_idx': full_dataset.class_to_idx,
                 'val_acc': val_acc,
             }, MODEL_PATH)
-            print(f"           ✅ บันทึก model ใหม่ (val_acc={val_acc:.1f}%)")
+            print(f"           บันทึก model ใหม่ (val_acc={val_acc:.1f}%)")
 
         scheduler.step()
 
     print("-" * 50)
-    print(f"\n✅ Train เสร็จ! Best val accuracy: {best_acc:.1f}%")
+    print(f"\n Train เสร็จ! Best val accuracy: {best_acc:.1f}%")
     print(f"   Model บันทึกที่: {MODEL_PATH}")
 
 if __name__ == "__main__":
