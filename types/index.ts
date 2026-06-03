@@ -2,6 +2,7 @@ export type Observatory = {
   observatory_id: string
   name:           string
   timestamp:      string
+  collected_at?:  string
   temperature:    number
   humidity:       number
   wind_speed:     number
@@ -15,19 +16,20 @@ export type Observatory = {
   score?:         number
 
   // รูปจาก NARIT
-  narit_image_url?:    string 
-  narit_sky_status?:   string
-  narit_score_clear?:  number
-  narit_score_cloudy?: number
-  narit_score_partly?: number
-  narit_score_rain?:   number
-  dew_point?:          number
-  solar_rad?:          number
-  daily_rain?:         number
+  narit_image_url?:      string
+  narit_sky_status?:     string
+  narit_score_clear?:    number
+  narit_score_cloudy?:   number
+  narit_score_partly?:   number
+  narit_score_rain?:     number
+  narit_cloud_percent?:  number
+  dew_point?:            number
+  solar_rad?:            number
+  daily_rain?:           number
 
   // CNN prediction
-  cnn_prediction?:          string  
-  cnn_confidence?:          number  
+  cnn_prediction?:          string
+  cnn_confidence?:          number
   cnn_score_clear?:         number
   cnn_score_partly_cloudy?: number
   cnn_score_cloudy?:        number
@@ -37,6 +39,14 @@ export type Observatory = {
   // Star Count (OpenCV)
   star_count?:      number
   star_updated_at?: string
+
+  // FastSAM
+  pixel_cloud_percent?: number
+
+  // AI Fusion (LiteLLM)
+  ai_trend?:      string
+  ai_prediction?: string
+  ai_updated_at?: string
 }
 
 export type SunMoonData = {

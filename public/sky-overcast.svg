@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2b3346"/>
+      <stop offset="100%" stop-color="#161c2a"/>
+    </linearGradient>
+    <linearGradient id="cloud" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#525c72"/>
+      <stop offset="100%" stop-color="#363f54"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#g)"/>
+  <g opacity="0.97">
+    <ellipse cx="70" cy="80" rx="120" ry="46" fill="url(#cloud)"/>
+    <ellipse cx="220" cy="60" rx="110" ry="42" fill="url(#cloud)"/>
+    <ellipse cx="350" cy="95" rx="110" ry="46" fill="url(#cloud)"/>
+    <ellipse cx="120" cy="160" rx="130" ry="50" fill="url(#cloud)"/>
+    <ellipse cx="300" cy="170" rx="120" ry="48" fill="url(#cloud)"/>
+    <ellipse cx="200" cy="250" rx="150" ry="52" fill="url(#cloud)"/>
+  </g>
+</svg>

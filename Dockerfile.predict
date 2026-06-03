@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+WORKDIR /app
+
+# libs ที่ opencv / torch ต้องใช้ตอน runtime
+# (ultralytics ดึง opencv-python ตัวเต็มมา จึงต้องมี libgl1 + libxcb1 ด้วย)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0 libgomp1 libgl1 libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/requirements-predict.txt ./
+RUN pip install --no-cache-dir -r requirements-predict.txt
+
+COPY scripts/predict_sky.py ./
+COPY scripts/FastSAM-s.pt ./
+
+CMD ["python", "-u", "predict_sky.py"]

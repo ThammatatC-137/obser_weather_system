@@ -1,10 +1,8 @@
-import os
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader, WeightedRandomSampler, Subset
 from torchvision import datasets, transforms, models
 from pathlib import Path
-import json
 
 DATASET_DIR = Path("dataset")
 MODEL_PATH  = Path("sky_model.pth")
@@ -13,7 +11,7 @@ EPOCHS      = 15
 IMG_SIZE    = 224
 CLASSES = ["clear", "cloudy", "partly_cloudy", "rain"]
 
-# augmentation สำหรับ train
+# transform สำหรับ train มีการ augment เพิ่มความหลากหลายของข้อมูล
 train_tf = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
     transforms.RandomHorizontalFlip(),
@@ -25,7 +23,7 @@ train_tf = transforms.Compose([
                          [0.229, 0.224, 0.225]),
 ])
 
-# สำหรับ validation ไม่ augment
+# transform สำหรับ validation ไม่ augment
 val_tf = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
     transforms.ToTensor(),
@@ -34,27 +32,29 @@ val_tf = transforms.Compose([
 ])
 
 def main():
-    print("🔭 Sky Condition CNN — Training")
+    print("Sky Condition CNN - Training")
     print(f"   Dataset: {DATASET_DIR}")
     print(f"   Device:  CPU")
     print()
 
-    # โหลด dataset
-    full_dataset = datasets.ImageFolder(DATASET_DIR, transform=train_tf)
-    print(f" Dataset: {len(full_dataset)} รูป")
-    for cls, idx in full_dataset.class_to_idx.items():
-        count = sum(1 for _, l in full_dataset.samples if l == idx)
-        print(f"   {cls}: {count} รูป")
+    # โหลด dataset 2 ชุด ชุด train ใช้ augment ชุด val ไม่ใช้
+    train_dataset = datasets.ImageFolder(DATASET_DIR, transform=train_tf)
+    val_dataset   = datasets.ImageFolder(DATASET_DIR, transform=val_tf)
+    print(f"Dataset: {len(train_dataset)} images")
+    for cls, idx in train_dataset.class_to_idx.items():
+        count = sum(1 for _, l in train_dataset.samples if l == idx)
+        print(f"   {cls}: {count} images")
 
-    # แบ่ง train/val 80:20
-    n     = len(full_dataset)
-    n_val = int(n * 0.2)
-    n_trn = n - n_val
-    train_ds, val_ds = torch.utils.data.random_split(full_dataset, [n_trn, n_val])
-    val_ds.dataset.transform = val_tf
+    # แบ่ง train/val 80:20 ใช้ index ชุดเดียวกันไม่ให้ข้อมูลซ้ำกัน
+    n        = len(train_dataset)
+    n_val    = int(n * 0.2)
+    n_trn    = n - n_val
+    indices  = torch.randperm(n).tolist()
+    train_ds = Subset(train_dataset, indices[:n_trn])
+    val_ds   = Subset(val_dataset,   indices[n_trn:])
 
-    # WeightedSampler แก้ imbalanced dataset
-    labels     = [full_dataset.samples[i][1] for i in train_ds.indices]
+    # ใช้ WeightedSampler ชดเชยข้อมูลที่แต่ละ class ไม่เท่ากัน
+    labels     = [train_dataset.samples[i][1] for i in train_ds.indices]
     class_count = [labels.count(i) for i in range(len(CLASSES))]
     weights    = [1.0 / class_count[l] for l in labels]
     sampler    = WeightedRandomSampler(weights, len(weights))
@@ -62,7 +62,7 @@ def main():
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, sampler=sampler,  num_workers=2)
     val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
 
-    # โหลด EfficientNet pretrained แล้ว fine-tune
+    # โหลด EfficientNet ที่ pretrained มาแล้ว เปลี่ยน layer สุดท้ายให้ตรงกับจำนวน class
     model     = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
     model.classifier[1] = nn.Linear(model.classifier[1].in_features, len(CLASSES))
 
@@ -71,11 +71,11 @@ def main():
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
     best_acc = 0.0
-    print(f"\n เริ่ม Train {EPOCHS} epochs...")
+    print(f"\nStart training {EPOCHS} epochs...")
     print("-" * 50)
 
     for epoch in range(EPOCHS):
-        # Train
+        # รอบ train
         model.train()
         train_loss, train_correct, train_total = 0, 0, 0
         for imgs, labels in train_loader:
@@ -90,7 +90,7 @@ def main():
             train_correct += (preds == labels).sum().item()
             train_total   += labels.size(0)
 
-        # Validation
+        # รอบ validation
         model.eval()
         val_correct, val_total = 0, 0
         with torch.no_grad():
@@ -105,21 +105,21 @@ def main():
 
         print(f"Epoch {epoch+1:2d}/{EPOCHS} | Loss: {train_loss/len(train_loader):.3f} | Train: {train_acc:.1f}% | Val: {val_acc:.1f}%")
 
-        # บันทึก model ที่ดีที่สุด
+        # เก็บ model ที่ได้ accuracy ดีที่สุด
         if val_acc > best_acc:
             best_acc = val_acc
             torch.save({
                 'model_state': model.state_dict(),
-                'class_to_idx': full_dataset.class_to_idx,
+                'class_to_idx': train_dataset.class_to_idx,
                 'val_acc': val_acc,
             }, MODEL_PATH)
-            print(f"           บันทึก model ใหม่ (val_acc={val_acc:.1f}%)")
+            print(f"           saved new model (val_acc={val_acc:.1f}%)")
 
         scheduler.step()
 
     print("-" * 50)
-    print(f"\n Train เสร็จ! Best val accuracy: {best_acc:.1f}%")
-    print(f"   Model บันทึกที่: {MODEL_PATH}")
+    print(f"\nTraining done. Best val accuracy: {best_acc:.1f}%")
+    print(f"   Model saved at: {MODEL_PATH}")
 
 if __name__ == "__main__":
     main()

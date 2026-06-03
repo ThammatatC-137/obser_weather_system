@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // สร้าง build แบบ standalone (โฟลเดอร์ .next/standalone + server.js) สำหรับรันใน Docker
+  output: 'standalone',
 };
 
 export default nextConfig;

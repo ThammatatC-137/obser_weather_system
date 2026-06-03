@@ -1,0 +1,13 @@
+# dependencies สำหรับ predict_sky.py (เก็บรูป + FastSAM นับเมฆ + AI fusion)
+# torch แบบ CPU จาก index ของ PyTorch
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+requests
+pymongo
+schedule
+python-dotenv
+numpy
+opencv-python-headless
+torch
+torchvision
+ultralytics

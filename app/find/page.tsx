@@ -1,6 +1,67 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Sidebar from '@/components/Sidebar'
+
+type DarkSpot = { name: string; lat: number; lon: number; country: string; dist?: number }
+
+const DARK_SKY_SPOTS: DarkSpot[] = [
+  // Thailand
+  { name: 'ดอยอินทนนท์', lat: 18.5883, lon: 98.4868, country: 'ไทย' },
+  { name: 'ดอยม่อนแจ่ม', lat: 18.8896, lon: 98.8665, country: 'ไทย' },
+  { name: 'ดอยหลวงเชียงดาว', lat: 19.4062, lon: 98.9198, country: 'ไทย' },
+  { name: 'เขาค้อ', lat: 16.7536, lon: 101.0382, country: 'ไทย' },
+  { name: 'อุทยานแห่งชาติเขาใหญ่', lat: 14.4321, lon: 101.3695, country: 'ไทย' },
+  { name: 'เขาสามร้อยยอด', lat: 12.1856, lon: 99.9539, country: 'ไทย' },
+  { name: 'อุทยานแห่งชาติแก่งกระจาน', lat: 12.9386, lon: 99.5726, country: 'ไทย' },
+  { name: 'ดอยสุเทพ เชียงใหม่', lat: 18.8048, lon: 98.9215, country: 'ไทย' },
+  // East Asia
+  { name: 'Noto Peninsula Dark Sky Park', lat: 37.2, lon: 137.2, country: 'Japan' },
+  { name: 'Iriomote-Ishigaki National Park', lat: 24.35, lon: 124.1, country: 'Japan' },
+  { name: 'Zhangye Danxia National Park', lat: 38.9, lon: 100.1, country: 'China' },
+  { name: 'Jeju Island Dark Sky Park', lat: 33.38, lon: 126.55, country: 'South Korea' },
+  // Southeast Asia
+  { name: 'Gunung Mulu National Park', lat: 4.05, lon: 114.83, country: 'Malaysia' },
+  { name: 'Bali Barat National Park', lat: -8.15, lon: 114.5, country: 'Indonesia' },
+  { name: 'Con Dao National Park', lat: 8.68, lon: 106.6, country: 'Vietnam' },
+  // South Asia
+  { name: 'Rann of Kutch', lat: 23.73, lon: 70.2, country: 'India' },
+  { name: 'Spiti Valley', lat: 32.25, lon: 78.05, country: 'India' },
+  // Middle East
+  { name: 'Wadi Rum Protected Area', lat: 29.57, lon: 35.42, country: 'Jordan' },
+  { name: 'Hatta Mountain Reserve', lat: 24.82, lon: 56.12, country: 'UAE' },
+  // Australia & Pacific
+  { name: 'Warrumbungle National Park (IDA)', lat: -31.28, lon: 149.02, country: 'Australia' },
+  { name: 'Uluru-Kata Tjuta National Park', lat: -25.34, lon: 131.03, country: 'Australia' },
+  { name: 'Aoraki Mackenzie Dark Sky Reserve', lat: -43.75, lon: 170.1, country: 'New Zealand' },
+  // Europe
+  { name: 'Exmoor National Park (IDA)', lat: 51.14, lon: -3.73, country: 'UK' },
+  { name: 'Kerry Dark Sky Reserve (Gold)', lat: 52.01, lon: -9.88, country: 'Ireland' },
+  { name: 'Pic du Midi Observatory', lat: 42.94, lon: 0.14, country: 'France' },
+  { name: 'NaturEft Dark Sky Park', lat: 50.12, lon: 6.28, country: 'Belgium' },
+  { name: 'Teide National Park', lat: 28.27, lon: -16.64, country: 'Spain' },
+  { name: 'Jasper National Park (IDA)', lat: 52.87, lon: -117.95, country: 'Canada' },
+  // North America
+  { name: 'Cherry Springs State Park (IDA Gold)', lat: 41.66, lon: -77.82, country: 'USA' },
+  { name: 'Big Bend National Park', lat: 29.13, lon: -103.24, country: 'USA' },
+  { name: 'Bryce Canyon National Park', lat: 37.59, lon: -112.19, country: 'USA' },
+  { name: 'Natural Bridges National Monument (IDA)', lat: 37.6, lon: -110.0, country: 'USA' },
+  { name: 'Death Valley National Park', lat: 36.23, lon: -116.82, country: 'USA' },
+  // South America
+  { name: 'Atacama Desert', lat: -24.5, lon: -70.0, country: 'Chile' },
+  { name: 'Cerro Pachón Observatory', lat: -30.24, lon: -70.74, country: 'Chile' },
+  { name: 'Elqui Valley Dark Sky Sanctuary', lat: -30.15, lon: -70.65, country: 'Chile' },
+  // Africa
+  { name: 'NamibRand Nature Reserve (IDA Gold)', lat: -24.82, lon: 15.96, country: 'Namibia' },
+  { name: 'Karoo Highlands Dark Sky Reserve', lat: -32.35, lon: 22.65, country: 'South Africa' },
+  { name: 'Sahara Desert (Merzouga)', lat: 31.08, lon: -4.01, country: 'Morocco' },
+]
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371, toRad = (d: number) => d * Math.PI / 180
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2
+  return R * 2 * Math.asin(Math.sqrt(a))
+}
 import { SparkChart } from '@/components/SparkChart'
 import { DayCard } from '@/components/DayCard'
 import { COLORS } from '@/constants/observatories'
@@ -124,6 +185,21 @@ export default function FindPage() {
   const [searchHov, setSearchHov] = useState(false)
   const [gpsHov,    setGpsHov]    = useState(false)
   const [sunCardHov, setSunCardHov] = useState(false)
+  const [nearbyLoading, setNearbyLoading] = useState(false)
+  const [nearbySpots,   setNearbySpots]   = useState<DarkSpot[]>(DARK_SKY_SPOTS.slice(0, 5))
+
+  // sort dark sky spots ตาม GPS
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude, longitude } = pos.coords
+      const sorted = DARK_SKY_SPOTS
+        .map(s => ({ ...s, dist: Math.round(haversineKm(latitude, longitude, s.lat, s.lon)) }))
+        .sort((a, b) => (a.dist ?? 0) - (b.dist ?? 0))
+        .slice(0, 5)
+      setNearbySpots(sorted)
+    }, () => {}, { timeout: 5000 })
+  }, [])
 
   // โหลด Leaflet
   useEffect(() => {
@@ -170,23 +246,70 @@ export default function FindPage() {
     searchTimer.current = setTimeout(async () => {
       setSearching(true)
       try {
-        const key = process.env.NEXT_PUBLIC_GEOAPIFY_KEY
         const res = await fetch(
-          `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(q)}&limit=5&lang=th&apiKey=${key}`
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&accept-language=th&addressdetails=1`,
+          { headers: { 'User-Agent': 'ObservatoryWeatherApp/1.0' } }
         )
         const data = await res.json()
-        const results: SearchResult[] = (data.features || []).map((f: any) => ({
-          place_id:     String(f.properties.place_id),
-          display_name: f.properties.formatted,
-          lat:          String(f.properties.lat),
-          lon:          String(f.properties.lon),
-        }))
+        const results: SearchResult[] = (data || []).map((d: any) => ({
+          place_id:     String(d.place_id),
+          display_name: d.display_name,
+          lat:          String(d.lat),
+          lon:          String(d.lon),
+        })).filter((r: SearchResult) => r.display_name)
         setSuggestions(results)
         setShowSuggest(results.length > 0)
       } catch {}
       finally { setSearching(false) }
     }, 300)
   }, [])
+
+  const fetchNearbyOnFocus = useCallback(async () => {
+    if (suggestions.length > 0) { setShowSuggest(true); return }
+    if (!navigator.geolocation) return
+    setNearbyLoading(true)
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        const { latitude: lat, longitude: lon } = pos.coords
+        const headers = { 'User-Agent': 'ObservatoryWeatherApp/1.0' }
+
+        // reverse geocode เพื่อหาชื่อสถานที่ปัจจุบัน
+        const rev = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=th`,
+          { headers }
+        )
+        const revData = await rev.json()
+        const nearby: SearchResult[] = []
+
+        const curName = revData?.address?.city || revData?.address?.county || revData?.address?.state || ''
+        nearby.push({
+          place_id: 'current',
+          display_name: `ตำแหน่งปัจจุบัน${curName ? ` — ${curName}` : ''}`,
+          lat: String(lat), lon: String(lon),
+        })
+
+        // ค้นสถานที่ใกล้เคียงจากชื่อเมืองปัจจุบัน
+        if (curName) {
+          const near = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(curName)}&format=json&limit=4&accept-language=th`,
+            { headers }
+          )
+          const nearData = await near.json()
+          ;(nearData || []).slice(0, 4).forEach((d: any) => {
+            if (d.display_name) nearby.push({
+              place_id: String(d.place_id),
+              display_name: d.display_name,
+              lat: String(d.lat), lon: String(d.lon),
+            })
+          })
+        }
+
+        setSuggestions(nearby)
+        setShowSuggest(nearby.length > 0)
+      } catch {}
+      finally { setNearbyLoading(false) }
+    }, () => setNearbyLoading(false), { timeout: 5000 })
+  }, [suggestions.length])
 
   // ดึงข้อมูลจาก Open-Meteo ตรงๆ
   const fetchWeather = useCallback(async (lat: number, lon: number, name: string) => {
@@ -408,7 +531,9 @@ export default function FindPage() {
         {/* Header + Search */}
         <div style={{ padding: `20px ${px} 0`, position: 'relative', zIndex: 100 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-            <span style={{ fontSize: '20px' }}>⭐</span>
+            <svg width="24" height="24" viewBox="0 0 24 24">
+              <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill={COLORS.teal} />
+            </svg>
             <h1 style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: 700, color: '#fff', margin: 0 }}>
               หาที่ดูดาว
             </h1>
@@ -420,7 +545,7 @@ export default function FindPage() {
                 value={query}
                 onChange={e => handleSearch(e.target.value)}
                 onKeyDown={handleKeyDown}
-                onFocus={() => suggestions.length > 0 && setShowSuggest(true)}
+                onFocus={() => { if (query.length < 2) fetchNearbyOnFocus(); else if (suggestions.length > 0) setShowSuggest(true) }}
                 onBlur={() => setTimeout(() => setShowSuggest(false), 200)}
                 onMouseEnter={() => setInputHov(true)}
                 onMouseLeave={() => setInputHov(false)}
@@ -439,39 +564,47 @@ export default function FindPage() {
               {/* Dropdown */}
               {showSuggest && suggestions.length > 0 && (
                 <div style={{
-                  position: 'absolute', top: '100%', left: 0, right: 0,
-                  background: '#0d1b2e', border: '1px solid rgba(6,214,160,0.2)',
-                  borderRadius: '10px', marginTop: '4px', zIndex: 9999,
-                  overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.8)',
+                  position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+                  display: 'flex', flexDirection: 'column', gap: '4px',
+                  zIndex: 9999,
                 }}>
-                  {suggestions.map(s => (
+                  {suggestions.map((s) => (
                     <div key={s.place_id}
                       onMouseDown={() => fetchWeather(parseFloat(s.lat), parseFloat(s.lon), s.display_name)}
                       style={{
-                        padding: '10px 16px', cursor: 'pointer', fontSize: '13px',
-                        color: 'rgba(255,255,255,0.85)',
-                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '10px 14px', cursor: 'pointer',
+                        background: 'linear-gradient(135deg, #16223f 0%, #0d1627 100%)',
+                        border: '1px solid rgba(6,214,160,0.35)',
+                        borderLeft: '4px solid #06D6A0',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+                        transition: 'background 0.12s',
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(6,214,160,0.1)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(135deg, #1e3050 0%, #112035 100%)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'linear-gradient(135deg, #16223f 0%, #0d1627 100%)')}
                     >
-                      📍 {s.display_name}
+                      {/* pin icon */}
+                      <svg width="14" height="14" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                        <path d="M12 2 C8.13 2 5 5.13 5 9 C5 14 12 22 12 22 C12 22 19 14 19 9 C19 5.13 15.87 2 12 2 Z" fill="#06D6A0"/>
+                        <circle cx="12" cy="9" r="3" fill="rgba(0,0,0,0.3)"/>
+                      </svg>
+                      <span style={{ fontSize: '13px', color: '#fff', lineHeight: 1.4 }}>
+                        {s.display_name}
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
               {/* Loading indicator */}
-              {searching && (
-                <div style={{
-                  position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                  color: COLORS.teal, fontSize: '12px',
-                }}>
-                  กำลังค้นหา...
+              {(searching || nearbyLoading) && (
+                <div style={{ position: 'absolute', right: '14px', top: '40%', transform: 'translateY(-50%)', pointerEvents: 'none', color: COLORS.teal, fontSize: '12px', letterSpacing: '0.06em', fontFamily: 'var(--font-poppins)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  {nearbyLoading ? 'หาตำแหน่งใกล้เคียง...' : 'ค้นหา...'}
                 </div>
               )}
             </div>
 
-            {/* ปุ่มค้นหา — SVG icon */}
+            {/* ปุ่มค้นหา (ไอคอน SVG) */}
             <button onClick={handleSearchSubmit} disabled={searching || query.length < 2}
               onMouseEnter={() => setSearchHov(true)}
               onMouseLeave={() => setSearchHov(false)}
@@ -484,13 +617,15 @@ export default function FindPage() {
                 display: 'flex', alignItems: 'center', gap: '6px',
                 fontWeight: 600,
               }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <svg width="16" height="16" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8" fill="currentColor" opacity="0.9"/>
+                <circle cx="11" cy="11" r="5" fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth="2"/>
+                <line x1="17.5" y1="17.5" x2="21" y2="21" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
               </svg>
               {searching ? '...' : 'ค้นหา'}
             </button>
 
-            {/* ปุ่ม GPS — location pin icon สีแดง */}
+            {/* ปุ่ม GPS (หมุดตำแหน่งสีแดง) */}
             <button onClick={handleMyLocation}
               onMouseEnter={() => setGpsHov(true)}
               onMouseLeave={() => setGpsHov(false)}
@@ -542,12 +677,72 @@ export default function FindPage() {
             boxSizing: 'border-box',
           }}>
             {loading ? (
-              <div style={{ color: COLORS.teal, fontSize: '13px', textAlign: 'center', paddingTop: '60px', letterSpacing: '0.1em' }}>
+              <div style={{ color: COLORS.teal, fontSize: '13px', textAlign: 'center', paddingTop: '60px', letterSpacing: '0.1em', fontFamily: 'var(--font-poppins)' }}>
                 กำลังดึงข้อมูล...
               </div>
             ) : error ? (
               <div style={{ color: '#f87171', fontSize: '13px', textAlign: 'center', paddingTop: '40px' }}>{error}</div>
-            ) : weatherNow ? (
+            ) : !weatherNow ? (
+              // Empty state
+              <div style={{ fontFamily: 'var(--font-poppins)', display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '8px' }}>
+                {/* icon + คำแนะนำ */}
+                <div style={{ textAlign: 'center', padding: '20px 0 8px' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" style={{ margin: '0 auto 12px', display: 'block' }}>
+                    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill={COLORS.teal} opacity="0.8"/>
+                  </svg>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff', marginBottom: '6px' }}>เลือกสถานที่ดูดาว</div>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7 }}>
+                    ค้นหาหรือคลิกบนแผนที่<br/>เพื่อเช็คสภาพอากาศและคืนที่เหมาะสม
+                  </div>
+                </div>
+
+                {/* วิธีใช้ */}
+                <div style={{ background: 'linear-gradient(135deg,#1a2540 0%,#0f1a2e 50%,#1a2035 100%)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}>
+                  <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span style={{ fontSize: '10px', color: '#fff', letterSpacing: '0.1em', fontWeight: 700 }}>วิธีใช้</span>
+                  </div>
+                  <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {[
+                      { icon: '🔍', text: 'พิมพ์ค้นหาสถานที่ด้านบน' },
+                      { icon: '📍', text: 'กดปุ่ม GPS เพื่อใช้ตำแหน่งปัจจุบัน' },
+                      { icon: '🗺️', text: 'คลิกจุดใดก็ได้บนแผนที่' },
+                    ].map((t, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '12px', color: '#fff' }}>
+                        <span>{t.icon}</span><span>{t.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* จุดท้องฟ้ามืด */}
+                <div style={{ background: 'linear-gradient(135deg,#1a2540 0%,#0f1a2e 50%,#1a2035 100%)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}>
+                  <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span style={{ fontSize: '10px', color: '#fff', letterSpacing: '0.1em', fontWeight: 700 }}>จุดท้องฟ้ามืดใกล้คุณ</span>
+                  </div>
+                  <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {nearbySpots.map(loc => (
+                      <button key={loc.name}
+                        onClick={() => fetchWeather(loc.lat, loc.lon, loc.name)}
+                        style={{ background: 'linear-gradient(135deg,#16223f 0%,#0d1627 100%)', border: '1px solid rgba(6,214,160,0.5)', borderLeft: '3px solid #06D6A0', borderRadius: '6px', padding: '7px 12px', color: '#fff', fontSize: '12px', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-poppins)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', transition: 'background 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(135deg,#1e3050 0%,#112035 100%)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'linear-gradient(135deg,#16223f 0%,#0d1627 100%)')}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                            <path d="M12 2 C8.13 2 5 5.13 5 9 C5 14 12 22 12 22 C12 22 19 14 19 9 C19 5.13 15.87 2 12 2 Z" fill={COLORS.teal}/>
+                          </svg>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{loc.name}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                          {loc.dist != null && <span style={{ fontSize: '10px', color: COLORS.teal, fontWeight: 600 }}>{loc.dist.toLocaleString()} km</span>}
+                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>{loc.country}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
               <>
                 <div style={{ ...cardStyle, padding: '14px 16px' }}>
                   <div style={{ fontSize: '11px', color: COLORS.teal, letterSpacing: '0.08em', marginBottom: '4px' }}>
@@ -637,10 +832,6 @@ export default function FindPage() {
                   </div>
                 )}
               </>
-            ) : (
-              <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px', textAlign: 'center', paddingTop: '80px' }}>
-                เลือกสถานที่เพื่อดูสภาพอากาศ
-              </div>
             )}
           </div>
         </div>
@@ -652,7 +843,7 @@ export default function FindPage() {
               15-Day Forecast {selectedDate && <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>— {selectedDate}</span>}
             </div>
             <div style={{
-              display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px',
+              display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', paddingTop: '14px',
               scrollbarWidth: 'thin', scrollbarColor: 'rgba(6,214,160,0.3) transparent',
             } as React.CSSProperties}>
               {dayCards.map(day => (
@@ -662,7 +853,7 @@ export default function FindPage() {
                     width: isMobile ? '100px' : isDesktop ? `calc((100% - ${(dayCards.length - 1) * 8}px) / ${dayCards.length})` : '120px',
                     minWidth: '90px', maxWidth: '130px',
                     outline: selectedDate === day.date ? `2px solid ${COLORS.teal}` : 'none',
-                    borderRadius: '12px',
+                    borderRadius: '12px', overflow: 'visible',
                   }}>
                   <DayCard day={day} />
                 </div>

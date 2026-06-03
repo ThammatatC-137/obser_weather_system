@@ -1,5 +1,5 @@
 
-// moonPhase.ts — คำนวณ Moon phase, Sun position, Sun altitude
+// คำนวณข้างขึ้นข้างแรม ตำแหน่งและมุมเงยของดวงอาทิตย์
 
 
 function getMoonIllumination(date: Date): { fraction: number; phase: number } {
@@ -79,7 +79,7 @@ export function getSunPosition(sunriseISO: string, sunsetISO: string): number {
 }
 
 
-export function getSunAltitude(sunriseISO: string, sunsetISO: string, lat: number, lon: number): number {
+export function getSunAltitude(_sunriseISO: string, _sunsetISO: string, lat: number, lon: number): number {
   const rad = Math.PI / 180
   const now = new Date()
   const d   = now.getTime() / 86400000 - 10957.5

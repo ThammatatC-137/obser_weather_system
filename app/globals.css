@@ -10,7 +10,9 @@
 body {
   background: #060810;
   color: #f1f5f9;
-  font-family: 'DM Sans', 'Helvetica Neue', sans-serif;
+  font-family: var(--font-poppins), 'Segoe UI', Tahoma, sans-serif;
+  /* ขยายทั้งหน้าให้ตัวหนังสือใหญ่ขึ้น 10% */
+  zoom: 1.1;
 }
 
 /* ซ่อน Scrollbar แต่ยังเลื่อนได้ */

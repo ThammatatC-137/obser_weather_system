@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Sidebar      from '@/components/Sidebar'
 import { Observatory, SunMoonData, DayData } from '@/types'
-import { COLORS, OBS_COORDS, REFRESH_INTERVAL } from '@/constants/observatories'
+import { COLORS, OBS_COORDS, REFRESH_INTERVAL, OBS_TIMEZONE } from '@/constants/observatories'
 import { getSkyPhoto } from '@/lib/skyPhoto'
 import { getMoonPhase, getSunPosition, getSunAltitude } from '@/lib/moonPhase'
 import { DayCard }    from '@/components/DayCard'
@@ -26,16 +26,16 @@ function useWindowWidth() {
 
 // icon แต่ละหอดูดาว
 function IconMountain({ color = '#06D6A0' }: { color?: string }) {
-  return <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M3 18L8 8L12 14L15 10L21 18H3Z" stroke={color} strokeWidth="1.5" strokeLinejoin="round" fill="none"/></svg>
+  return <svg width="40" height="40" viewBox="0 0 24 24"><path d="M2 20 L8 8 L12 14 L15 10 L22 20 Z" fill={color} /><path d="M13.5 9.5 L15 7 L16.5 9.5 Z" fill="rgba(255,255,255,0.5)" /></svg>
 }
 function IconHome({ color = '#06D6A0' }: { color?: string }) {
-  return <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M3 12L12 4L21 12V20H15V15H9V20H3V12Z" stroke={color} strokeWidth="1.5" strokeLinejoin="round" fill="none"/></svg>
+  return <svg width="40" height="40" viewBox="0 0 24 24"><path d="M12 3 L21 10.5 V20 H15 V14 H9 V20 H3 V10.5 Z" fill={color} /><rect x="9" y="14" width="6" height="6" fill="rgba(0,0,0,0.25)" /></svg>
 }
 function IconCompass({ color = '#06D6A0' }: { color?: string }) {
-  return <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.5" fill="none"/><path d="M12 8L14 12L12 16L10 12L12 8Z" stroke={color} strokeWidth="1.5" strokeLinejoin="round" fill="none"/></svg>
+  return <svg width="40" height="40" viewBox="0 0 24 24"><polygon points="12,2 20,21 12,16 4,21" fill={color} transform="rotate(30, 12, 12)" /></svg>
 }
 function IconGlobe({ color = '#06D6A0' }: { color?: string }) {
-  return <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.5" fill="none"/><path d="M12 3C12 3 8 7 8 12C8 17 12 21 12 21" stroke={color} strokeWidth="1.5" fill="none"/><path d="M12 3C12 3 16 7 16 12C16 17 12 21 12 21" stroke={color} strokeWidth="1.5" fill="none"/><line x1="3" y1="12" x2="21" y2="12" stroke={color} strokeWidth="1.5"/></svg>
+  return <svg width="40" height="40" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill={color} /><ellipse cx="12" cy="12" rx="3.5" ry="9" fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="1.5" /><line x1="3" y1="9" x2="21" y2="9" stroke="rgba(0,0,0,0.25)" strokeWidth="1.5" /><line x1="3" y1="15" x2="21" y2="15" stroke="rgba(0,0,0,0.25)" strokeWidth="1.5" /></svg>
 }
 
 const OBS_ICONS: Record<string, React.FC<{color?: string}>> = {
@@ -53,24 +53,27 @@ function IconRain()     { return <svg width="16" height="16" viewBox="0 0 24 24"
 function IconPressure() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#8AAAC8" strokeWidth="1.5" fill="none"/><path d="M12 8V12L15 14" stroke="#8AAAC8" strokeWidth="1.5" strokeLinecap="round"/></svg> }
 function IconUV()       { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="#FFD166" strokeWidth="1.5" fill="none"/><path d="M12 2V4M12 20V22M2 12H4M20 12H22M4.93 4.93L6.34 6.34M17.66 17.66L19.07 19.07M19.07 4.93L17.66 6.34M6.34 17.66L4.93 19.07" stroke="#FFD166" strokeWidth="1.5" strokeLinecap="round"/></svg> }
 
+const cardBg          = 'linear-gradient(135deg, #1a2540 0%, #0f1a2e 50%, #1a2035 100%)'
+const boxTemplateBg   = 'linear-gradient(135deg, #16223f 0%, #0d1627 50%, #161c30 100%)'
+
 // style การ์ดปกติ
 const cardStyle: React.CSSProperties = {
-  background: 'linear-gradient(135deg, #1a2540 0%, #0f1a2e 50%, #1a2035 100%)',
+  background: cardBg,
   border: '1px solid rgba(255,255,255,0.06)',
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
 }
 
 // style การ์ดที่ hover ได้
-const hoverCardStyle = (hov: boolean): React.CSSProperties => ({
-  background: 'linear-gradient(135deg, #1a2540 0%, #0f1a2e 50%, #1a2035 100%)',
-  border: `1px solid ${hov ? 'rgba(6,214,160,0.2)' : 'rgba(255,255,255,0.06)'}`,
+const hoverCardStyle = (hov: boolean, color = 'rgba(6,214,160'): React.CSSProperties => ({
+  background: boxTemplateBg,
+  border: `1px solid ${hov ? `${color},0.35)` : 'rgba(255,255,255,0.06)'}`,
   borderRadius: '12px',
   boxShadow: hov
-    ? '0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(6,214,160,0.12)'
+    ? `0 12px 28px rgba(0,0,0,0.55), 0 0 0 1px ${color},0.12)`
     : '0 4px 20px rgba(0,0,0,0.4)',
-  transform: hov ? 'translateY(-3px)' : 'translateY(0)',
-  transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+  transform: hov ? 'translateY(-4px)' : 'translateY(0)',
+  transition: 'transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s, border-color 0.2s',
   cursor: 'default',
 })
 
@@ -83,12 +86,12 @@ function StatRow({ Icon, label, value, color = '#8AAAC8', isMobile }: {
     <div
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{ ...hoverCardStyle(hov), display: 'flex', alignItems: 'flex-start', padding: isMobile ? '12px 14px' : '16px 20px', gap: '8px' }}
+      style={{ ...hoverCardStyle(hov), display: 'flex', alignItems: 'flex-start', padding: isMobile ? '12px 14px' : 'clamp(8px, 1.5vh, 16px) 20px', gap: '8px' }}
     >
       <div style={{ flexShrink: 0, marginTop: '2px' }}><Icon /></div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em', fontWeight: 500 }}>{label}</div>
-        <div style={{ fontSize: isMobile ? '28px' : '40px', fontWeight: 300, color, marginTop: '2px', letterSpacing: '-0.01em' }}>{value}</div>
+        <div style={{ fontSize: isMobile ? '28px' : 'clamp(22px, 3vh, 40px)', fontWeight: 300, color, marginTop: '2px', letterSpacing: '-0.01em' }}>{value}</div>
       </div>
     </div>
   )
@@ -153,6 +156,18 @@ export default function ObservatoryDetail() {
   const [chartData,      setChartData]      = useState<ChartData | null>(null)
   const [chartLoading,   setChartLoading]   = useState(false)
   const [sunHov,         setSunHov]         = useState(false)
+  const forecastScrollRef = useRef<HTMLDivElement>(null)
+
+  // scroll forecast ให้ TODAY อยู่กลาง บน mobile/tablet
+  useEffect(() => {
+    if (!forecastScrollRef.current || forecast.length === 0) return
+    const past      = forecast.filter(d => d.isPast).slice(-7)
+    const cardW     = isMobile ? 110 : 130
+    const gap       = 8
+    const container = forecastScrollRef.current
+    const scrollTo  = past.length * (cardW + gap) - container.clientWidth / 2 + cardW / 2
+    container.scrollLeft = Math.max(0, scrollTo)
+  }, [forecast.length, isMobile])
 
   // ดึงข้อมูลสภาพอากาศปัจจุบัน
   const fetchRealtime = useCallback(async () => {
@@ -171,16 +186,10 @@ export default function ObservatoryDetail() {
   const fetchSunMoon = useCallback(async () => {
     const coords = OBS_COORDS[id]
     if (!coords) return
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      const res   = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}` +
-        `&daily=sunrise,sunset&timezone=auto&start_date=${today}&end_date=${today}`
-      )
-      const data  = await res.json()
-      const sr    = data.daily?.sunrise?.[0]
-      const ss    = data.daily?.sunset?.[0]
-      const moon  = getMoonPhase(new Date())
+
+    const moon = getMoonPhase(new Date())
+
+    const applySunMoon = (sr: string, ss: string) => {
       setSunMoon({
         sunrise:      new Date(sr).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
         sunset:       new Date(ss).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
@@ -191,7 +200,31 @@ export default function ObservatoryDetail() {
         illumination: moon.illumination,
         sunAltitude:  getSunAltitude(sr, ss, coords.lat, coords.lon),
       })
-    } catch (e) { console.error(e) }
+    }
+
+    try {
+      const today      = new Date().toISOString().split('T')[0]
+      const controller = new AbortController()
+      const timer      = setTimeout(() => controller.abort(), 6000)
+      const res  = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}` +
+        `&daily=sunrise,sunset&timezone=auto&start_date=${today}&end_date=${today}`,
+        { signal: controller.signal }
+      )
+      clearTimeout(timer)
+      const data = await res.json()
+      const sr   = data.daily?.sunrise?.[0]
+      const ss   = data.daily?.sunset?.[0]
+      if (sr && ss) { applySunMoon(sr, ss); return }
+    } catch { /* fallback ด้านล่าง */ }
+
+    // fallback: คำนวณจาก suncalc โดยตรง ไม่ต้องพึ่ง network
+    try {
+      const SunCalc = (await import('suncalc')).default
+      const now     = new Date()
+      const times   = SunCalc.getTimes(now, coords.lat, coords.lon)
+      applySunMoon(times.sunrise.toISOString(), times.sunset.toISOString())
+    } catch (e) { console.error('SunCalc fallback failed', e) }
   }, [id])
 
   // ดึงพยากรณ์อากาศ 15 วัน
@@ -220,17 +253,25 @@ export default function ObservatoryDetail() {
     try {
       const res  = await fetch(`/api/history?id=${id}`)
       const json = await res.json()
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      // weather_history มี row 2 ชนิด: ข้อมูล sensor (จาก collector) และ row เมฆล้วน (จาก predict_sky)
+      // กราฟนี้เป็นกราฟ sensor จึงใช้เฉพาะ row ที่มีค่า sensor จริง ไม่งั้นช่วงที่ sensor ของหอนั้นล่ม
+      // จะถูก row เมฆล้วน (ค่า null) ดันให้เส้นหายไปครึ่งกราฟ
+      const rows = Array.isArray(json.data)
+        ? json.data.filter((r: any) =>
+            r.temperature != null || r.humidity != null ||
+            r.pressure   != null || r.wind_speed != null)
+        : []
+      if (json.success && rows.length > 0) {
         setChartData({
-          times:       json.data.map((r: any) => r.timestamp),
-          temperature: json.data.map((r: any) => r.temperature ?? null),
-          humidity:    json.data.map((r: any) => r.humidity    ?? null),
-          wind_speed:  json.data.map((r: any) => r.wind_speed  ?? null),
-          pressure:    json.data.map((r: any) => r.pressure    ?? null),
-          rain_rate:   json.data.map((r: any) => r.rain_rate   ?? null),
-          uv_index:    json.data.map((r: any) => r.uv_index    ?? null),
-          seeing_dimm: json.data.map((r: any) => r.seeing_dimm ?? null),
-          dew_point:   json.data.map((r: any) => r.dew_point   ?? null),
+          times:       rows.map((r: any) => r.timestamp),
+          temperature: rows.map((r: any) => r.temperature ?? null),
+          humidity:    rows.map((r: any) => r.humidity    ?? null),
+          wind_speed:  rows.map((r: any) => r.wind_speed  ?? null),
+          pressure:    rows.map((r: any) => r.pressure    ?? null),
+          rain_rate:   rows.map((r: any) => r.rain_rate   ?? null),
+          uv_index:    rows.map((r: any) => r.uv_index    ?? null),
+          seeing_dimm: rows.map((r: any) => r.seeing_dimm ?? null),
+          dew_point:   rows.map((r: any) => r.dew_point   ?? null),
         })
       } else { setChartData(null) }
     } catch (e) { console.error(e) }
@@ -343,12 +384,12 @@ export default function ObservatoryDetail() {
   }, [sunMoon])
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#060810', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-poppins)' }}>
       <div style={{ color: COLORS.teal, fontSize: '13px', letterSpacing: '0.1em' }}>LOADING...</div>
     </div>
   )
   if (!obs) return (
-    <div style={{ minHeight: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ minHeight: '100vh', background: '#060810', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', fontFamily: 'var(--font-poppins)' }}>
       <p style={{ color: COLORS.teal }}>Observatory not found</p>
       <button onClick={() => router.push('/')} style={{ padding: '10px 24px', background: 'transparent', border: `1px solid ${COLORS.teal}`, borderRadius: '8px', color: COLORS.teal, cursor: 'pointer' }}>← Back</button>
     </div>
@@ -400,7 +441,7 @@ export default function ObservatoryDetail() {
 
   // กล่อง Stats 8 ตัว
   const StatsSection = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: isMobile ? '10px' : '18px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: isMobile ? '10px' : 'clamp(8px, 1.4vh, 18px)' }}>
       <StatRow Icon={IconHumid}    label="Humidity"  value={displayHumidity  ? `${displayHumidity}%`  : '--'} color={COLORS.teal} isMobile={isMobile} />
       <StatRow Icon={IconDewpoint} label="Dewpoint"  value={displayDewpoint  ? `${displayDewpoint}°C` : '--'} color="#8AAAC8"     isMobile={isMobile} />
       <StatRow Icon={IconSeeing}   label="Seeing"    value={displaySeeing    ?? '--'}                          color="#8AAAC8"     isMobile={isMobile} />
@@ -421,7 +462,7 @@ export default function ObservatoryDetail() {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '4px' : '8px' }}>
         {sunMoon
-          ? <div style={{ fontSize: isMobile ? '18px' : isTablet ? '20px' : '26px', fontWeight: 300, color: 'rgba(255,255,255,0.8)' }}>{sunMoon.sunAltitude.toFixed(2)}°</div>
+          ? <div style={{ fontSize: isMobile ? '18px' : isTablet ? '20px' : 'clamp(18px, 2.6vh, 26px)', fontWeight: 300, color: 'rgba(255,255,255,0.8)' }}>{sunMoon.sunAltitude.toFixed(2)}°</div>
           : <div />
         }
         {sunMoon && (
@@ -434,7 +475,7 @@ export default function ObservatoryDetail() {
 
       
       <div style={{ position: 'relative' }}>
-        <svg width="100%" height={isMobile ? '55' : isTablet ? '70' : '90'} viewBox="0 0 320 100">
+        <svg width="100%" viewBox="0 0 320 100" style={{ display: 'block', height: isMobile ? '55px' : isTablet ? '70px' : 'clamp(56px, 9vh, 90px)' }}>
           <line x1="0" y1="90" x2="320" y2="90" stroke="rgba(6,214,160,0.15)" strokeWidth="1" />
           <path d="M0 90 Q160 0 320 90" fill="none" stroke="rgba(6,214,160,0.12)" strokeWidth="1.5" strokeDasharray="4 4" />
           {isDaytime && (
@@ -481,11 +522,11 @@ export default function ObservatoryDetail() {
   )
 
   return (
-    <div style={{ background: '#000000', color: '#f1f5f9', display: 'flex' }}>
+    <div style={{ background: '#060810', color: '#f1f5f9', display: 'flex', fontFamily: 'var(--font-poppins)' }}>
       <Sidebar activeId={id} />
       <main style={{ flex: 1, minWidth: 0 }}>
 
-        {/* Hero — desktop = 2 คอลัมน์, mobile/tablet = ซ้อนแนวตั้ง */}
+        {/* Hero: desktop แบ่ง 2 คอลัมน์, mobile/tablet ซ้อนแนวตั้ง */}
         {isDesktop ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 600px', height: '73vh', minHeight: '500px' }}>
             <HeroImage
@@ -495,7 +536,7 @@ export default function ObservatoryDetail() {
               cardStyle={cardStyle} router={router} lastUpdate={lastUpdate}
               fetchRealtimeChart={fetchRealtimeChart} setSelectedDate={setSelectedDate} setHistoryData={setHistoryData}
             />
-            <div style={{ background: '#000', borderLeft: '1px solid rgba(6,214,160,0.08)', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
+            <div style={{ background: cardBg, borderLeft: '1px solid rgba(255,255,255,0.06)', padding: 'clamp(12px, 2vh, 20px) 16px', display: 'flex', flexDirection: 'column', gap: 'clamp(10px, 2vh, 20px)', overflowY: 'auto' }}>
               <StatsSection />
               <SunMoonSection />
             </div>
@@ -509,7 +550,7 @@ export default function ObservatoryDetail() {
               />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(6,11,20,0.3) 0%, rgba(6,11,20,0.95) 100%)' }} />
               <div style={{ position: 'absolute', top: '16px', left: '16px', right: '16px', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button onClick={() => router.push('/')} style={{ ...cardStyle, padding: '6px 12px', color: COLORS.teal, cursor: 'pointer', fontSize: '12px', border: '1px solid rgba(6,214,160,0.2)' }}>← Back</button>
+                <button onClick={() => router.push('/')} style={{ ...cardStyle, padding: '6px 12px', color: COLORS.teal, cursor: 'pointer', fontSize: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>← Back</button>
                 {lastUpdate && <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>Updated {lastUpdate}</span>}
               </div>
               <div style={{ position: 'absolute', bottom: '20px', left: '16px', right: '16px', zIndex: 2 }}>
@@ -526,7 +567,7 @@ export default function ObservatoryDetail() {
                 </div>
                 {selectedDate && (
                   <button onClick={() => { setSelectedDate(null); setHistoryData(null); fetchRealtimeChart() }}
-                    style={{ ...cardStyle, marginTop: '8px', padding: '5px 12px', color: COLORS.teal, cursor: 'pointer', fontSize: '11px', border: '1px solid rgba(6,214,160,0.2)' }}>
+                    style={{ ...cardStyle, marginTop: '8px', padding: '5px 12px', color: COLORS.teal, cursor: 'pointer', fontSize: '11px', border: '1px solid rgba(255,255,255,0.1)' }}>
                      Back to Live
                   </button>
                 )}
@@ -554,7 +595,7 @@ export default function ObservatoryDetail() {
                 // desktop: scroll แนวนอน card เท่ากันทุกใบ
                 <div style={{
                   display: 'flex', gap: '8px',
-                  overflowX: 'auto', paddingBottom: '8px',
+                  overflowX: 'auto', paddingBottom: '8px', paddingTop: '14px',
                   scrollbarWidth: 'thin',
                   scrollbarColor: 'rgba(6,214,160,0.3) transparent',
                 } as React.CSSProperties}>
@@ -565,7 +606,7 @@ export default function ObservatoryDetail() {
                         width: `calc((100% - ${(days.length - 1) * 8}px) / ${days.length})`,
                         minWidth: '90px', maxWidth: '130px',
                         outline: selectedDate === day.date ? `2px solid ${COLORS.teal}` : 'none',
-                        borderRadius: '12px',
+                        borderRadius: '12px', overflow: 'visible',
                       }}>
                       <DayCard day={day.isToday && obs ? { ...day, tempMax: obs.temperature ?? day.tempMax } : day} />
                     </div>
@@ -573,22 +614,26 @@ export default function ObservatoryDetail() {
                 </div>
               ) : (
                 // mobile/tablet: scroll snap ทีละ card
-                <div style={{
-                  display: 'flex', gap: '8px',
-                  overflowX: 'auto', paddingBottom: '12px',
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: 'rgba(6,214,160,0.3) transparent',
-                  WebkitOverflowScrolling: 'touch',
-                  scrollSnapType: 'x mandatory',
-                } as React.CSSProperties}>
+                <div
+                  ref={forecastScrollRef}
+                  style={{
+                    display: 'flex', gap: '8px',
+                    overflowX: 'auto', paddingBottom: '12px',
+                    paddingTop: '14px',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(6,214,160,0.3) transparent',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollSnapType: 'x mandatory',
+                  } as React.CSSProperties}>
                   {days.map(day => (
                     <div key={day.date} onClick={() => handleDayClick(day.date)}
                       style={{
                         cursor: 'pointer', flexShrink: 0,
                         width: isMobile ? '110px' : '130px',
-                        scrollSnapAlign: 'start',
+                        scrollSnapAlign: day.isToday ? 'center' : 'start',
                         outline: selectedDate === day.date ? `2px solid ${COLORS.teal}` : 'none',
                         borderRadius: '12px',
+                        overflow: 'visible',
                       }}>
                       <DayCard day={day.isToday && obs ? { ...day, tempMax: obs.temperature ?? day.tempMax } : day} />
                     </div>
@@ -640,6 +685,13 @@ export default function ObservatoryDetail() {
 
 // Hero รูปใหญ่ฝั่งซ้าย (desktop เท่านั้น)
 function HeroImage({ skyPhoto, obs, ObsIcon, selectedDate, statusLabel, heroTemp, heroConditionIcon, heroConditionText, cardStyle, router, lastUpdate, fetchRealtimeChart, setSelectedDate, setHistoryData }: any) {
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(t)
+  }, [])
+  const tz = OBS_TIMEZONE[obs.observatory_id as string] || 'UTC'
+
   return (
     <div style={{ position: 'relative', overflow: 'hidden' }}>
       <img src={skyPhoto} alt={obs.condition}
@@ -650,7 +702,7 @@ function HeroImage({ skyPhoto, obs, ObsIcon, selectedDate, statusLabel, heroTemp
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(6,11,20,0.95) 100%)' }} />
       <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 2, display: 'flex', alignItems: 'center', gap: '10px' }}>
         {lastUpdate && <span style={{ fontSize: '16px', color: 'rgba(255,255,255,0.3)' }}>Updated {lastUpdate}</span>}
-        <button onClick={() => router.push('/')} style={{ ...cardStyle, padding: '6px 14px', color: COLORS.teal, cursor: 'pointer', fontSize: '12px', border: '1px solid rgba(6,214,160,0.2)' }}>Back</button>
+        <button onClick={() => router.push('/')} style={{ ...cardStyle, padding: '6px 14px', color: COLORS.teal, cursor: 'pointer', fontSize: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>Back</button>
       </div>
       <div style={{ position: 'absolute', top: '28px', left: '28px', zIndex: 2 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
@@ -660,7 +712,7 @@ function HeroImage({ skyPhoto, obs, ObsIcon, selectedDate, statusLabel, heroTemp
         <div style={{ fontSize: '18px', color: 'rgba(255,255,255,0.35)', marginBottom: '16px' }}>
           {selectedDate
             ? <span style={{ color: COLORS.teal }}>{statusLabel}</span>
-            : new Date(obs.timestamp).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            : now.toLocaleString('en-GB', { timeZone: tz, weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })
           }
         </div>
         <div style={{ fontSize: '56px', fontWeight: 200, letterSpacing: '-0.04em', lineHeight: 1, color: '#fff' }}>
@@ -671,7 +723,7 @@ function HeroImage({ skyPhoto, obs, ObsIcon, selectedDate, statusLabel, heroTemp
         </div>
         {selectedDate && (
           <button onClick={() => { setSelectedDate(null); setHistoryData(null); fetchRealtimeChart() }}
-            style={{ ...cardStyle, marginTop: '12px', padding: '6px 14px', color: COLORS.teal, cursor: 'pointer', fontSize: '11px', border: '1px solid rgba(6,214,160,0.2)' }}>
+            style={{ ...cardStyle, marginTop: '12px', padding: '6px 14px', color: COLORS.teal, cursor: 'pointer', fontSize: '11px', border: '1px solid rgba(255,255,255,0.1)' }}>
             Back to Live
           </button>
         )}

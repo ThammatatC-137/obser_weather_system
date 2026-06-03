@@ -1,14 +1,11 @@
-
-// API Route — GET /api/weather
-// ดึงข้อมูลทุกหอจาก MongoDB
-// ส่งกลับเป็น JSON
-
+// GET /api/weather
+// ดึงข้อมูลทุกหอจาก MongoDB ส่งกลับเป็น JSON
 
 import { NextResponse } from 'next/server'
 import { connectDB }    from '@/lib/mongodb'
 import mongoose         from 'mongoose'
 
-// กำหนด Schema ตรงกับที่ Python บันทึกไว้
+// schema ให้ตรงกับที่ Python บันทึกไว้
 const WeatherSchema = new mongoose.Schema({
   observatory_id: String,
   name:           String,
@@ -26,19 +23,17 @@ const WeatherSchema = new mongoose.Schema({
   source:         String,
 }, { collection: 'weather_realtime' })
 
-// ป้องกัน Model ซ้ำ
+// กันการสร้าง model ซ้ำตอน hot reload
 const Weather = mongoose.models.Weather ||
                 mongoose.model('Weather', WeatherSchema)
 
 export async function GET() {
   try {
-    // เชื่อม MongoDB
     await connectDB()
 
     // ดึงข้อมูลทุกหอ
     const data = await Weather.find({}).lean()
 
-    // ส่งกลับเป็น JSON
     return NextResponse.json({
       success: true,
       count:   data.length,

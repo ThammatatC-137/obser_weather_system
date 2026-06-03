@@ -1,18 +1,18 @@
 'use client'
 
-// Custom Hook ดึงข้อมูลอากาศ + Auto Refresh
+// hook ดึงข้อมูลอากาศ และรีเฟรชอัตโนมัติ
 
 import { useState, useEffect, useCallback } from 'react'
 import { Observatory }        from '@/types'
 import { OBSERVATORY_ORDER, REFRESH_INTERVAL } from '@/constants/observatories'
 
 export function useWeather() {
-  // State 3 ตัวครับ
+  // state เก็บข้อมูลหอ สถานะโหลด และเวลาอัปเดตล่าสุด
   const [observatories, setObservatories] = useState<Observatory[]>([])
   const [loading,       setLoading]       = useState(true)
   const [lastUpdate,    setLastUpdate]    = useState('')
 
-  // ฟังก์ชันดึงข้อมูลครับ
+  // ฟังก์ชันดึงข้อมูลจาก API
   const fetchData = useCallback(async () => {
     try {
    
@@ -38,13 +38,12 @@ export function useWeather() {
   }, [])
 
   useEffect(() => {
-    // ดึงข้อมูลตอนเปิดหน้าครับ
+    // ดึงข้อมูลรอบแรกตอนเปิดหน้า
     fetchData()
 
-    // Auto Refresh ทุก 15 นาทีครับ
+    // ตั้งเวลาดึงข้อมูลซ้ำตาม REFRESH_INTERVAL
     const interval = setInterval(fetchData, REFRESH_INTERVAL)
 
- 
     return () => clearInterval(interval)
   }, [fetchData])
 

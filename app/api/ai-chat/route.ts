@@ -5,7 +5,7 @@ import { calcScore, scoreToLabel } from "@/lib/obsScore"
 
 export async function POST(request: Request) {
   try {
-    const { question, observatories } = await request.json()
+    const { question, observatories, mode } = await request.json()
     if (!observatories || observatories.length === 0) {
       return NextResponse.json({ answer: 'ยังไม่มีข้อมูลครับ', filter: [] })
     }
@@ -41,13 +41,20 @@ export async function POST(request: Request) {
       )
     })
 
-
+    // Realtime + CNN + Star Count
     const realtimeInfo = observatories.map((o: any) => {
       const score = calcScore(o)
       const label = scoreToLabel(score)
+
+      const cnnInfo = o.cnn_prediction
+        ? `CNN วิเคราะห์รูปกล้อง: ${o.cnn_prediction.replace(/_/g, ' ')} (มั่นใจ ${Math.round((o.cnn_confidence ?? 0) * 100)}%)`
+        : 'ยังไม่มีข้อมูล CNN'
+
+      const skyStatus = o.narit_sky_status ? `NARIT: ${o.narit_sky_status}` : `สภาพ: ${o.condition}`
       return `- ${o.name} (${o.observatory_id})
    สถานะ: ${label} (${score}/100)
-   เมฆ: ${o.cloud_cover}% | ความชื้น: ${o.humidity}% | ฝน: ${o.rain_rate} mm | สภาพ: ${o.condition}`
+   ${skyStatus} | ความชื้น: ${o.humidity}% | ลม: ${o.wind_speed} m/s | ฝน: ${o.rain_rate} mm
+   ${cnnInfo}`
     }).join('\n\n')
 
     const forecastInfo = observatories.map((o: any) => {
@@ -55,7 +62,36 @@ export async function POST(request: Request) {
       return `- ${o.name} (${o.observatory_id}):\n${days.join('\n')}`
     }).join('\n\n')
 
-    const prompt = `คุณเป็น AI ช่วยวิเคราะห์สภาพอากาศสำหรับดูดาวที่หอดูดาว NARIT ครับ ตอบแบบเพื่อนคุยกัน สั้น กระชับ เข้าใจง่าย
+    // ปรับ prompt ตาม mode
+    const isObservatoryMode = mode === 'observatory'
+    const todayStr = new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    const todayISO = new Date().toISOString().split('T')[0]
+
+    const prompt = isObservatoryMode
+      ? `คุณเป็น AI ผู้ช่วยเฝ้าหอดูดาว NARIT ครับ ช่วยวิเคราะห์สภาพท้องฟ้าและแนะนำการเปิด/ปิดโดมกล้องดูดาว
+
+วันนี้คือ: ${todayStr} (${todayISO})
+
+===== ข้อมูล Realtime + AI Vision =====
+${realtimeInfo}
+
+===== พยากรณ์อากาศ =====
+${forecastInfo}
+
+คำถาม: ${question}
+
+กฎการตอบ:
+- ตอบภาษาไทย เหมือนผู้ช่วยคุยกับคนเฝ้าหอดูดาว
+- ใช้ NARIT sky status และ CNN เป็นหลักในการประเมิน ห้ามอ้าง % เมฆโดยตรง
+- ถ้า NARIT บอก Cloudy/Rainy → ไม่แนะนำเปิดโดม แม้ sensor อื่นจะดูดี
+- ถ้า NARIT บอก Clear และ CNN ยืนยัน → แนะนำเปิดโดมได้
+- อ้างอิงวันที่เป็นภาษาไทยเช่น "พรุ่งนี้ (29 พ.ค.)" ไม่ใช่ตัวเลขดิบ
+- สั้น กระชับ ไม่เกิน 4 ประโยค ลงท้ายด้วย "ครับ"
+- ห้ามใช้ ** หรือ ### หรือหัวข้อลำดับ`
+      : `คุณเป็น AI ช่วยวิเคราะห์สภาพอากาศสำหรับดูดาวที่หอดูดาว NARIT ครับ ตอบแบบเพื่อนคุยกัน สั้น กระชับ เข้าใจง่าย
+
+วันนี้คือ: ${todayStr} (${todayISO})
+สัปดาห์หน้าคือ: วันที่ ${new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0]} ถึง ${new Date(Date.now() + 13*24*60*60*1000).toISOString().split('T')[0]}
 
 ===== ข้อมูล Realtime ตอนนี้ =====
 ${realtimeInfo}
@@ -70,9 +106,11 @@ ${historicalInfo}
 
 กฎการตอบ:
 - ตอบภาษาไทย สั้นๆ เหมือนเพื่อนคุยกัน ไม่เกิน 5 ประโยค
+- วันที่ในอดีต (ก่อน ${todayISO}) ห้ามแนะนำ เอาเฉพาะวันนี้และอนาคต
 - หอที่ "พร้อม" คือ score >= 70, "พอใช้" คือ 40-69, "ไม่พร้อม" คือ < 40
+- ใช้ NARIT sky status และ condition เป็นหลัก ห้ามอ้าง % เมฆโดยตรง ยังไม่น่าเชื่อถือ
 - โฟกัสแค่หอที่ดีที่สุด หรือที่ถามถึง ไม่ต้องรายงานทุกหอ
-- ใช้ตัวเลขแค่ที่จำเป็น เช่น เมฆ 0% หรือ ฝน 0 mm
+- อ้างอิงวันที่เป็นภาษาไทยเช่น "พรุ่งนี้ (29 พ.ค.)" ไม่ใช่ตัวเลขดิบ
 - ห้ามใช้ ** หรือ ### หรือหัวข้อลำดับ 1. 2. 3.
 - ลงท้ายด้วย "ครับ" เป็นธรรมชาติ
 

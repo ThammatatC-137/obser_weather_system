@@ -36,10 +36,10 @@ export const COLORS = {
 
 export const OBSERVATORIES = [
   { id: 'TNO', name: 'Thai National Observatory',   country: '🇹🇭', lat: 18.57,  lon: 98.48   },
-  { id: 'APK', name: 'Astro Park Observatory',      country: '🇹🇭', lat: 14.87,  lon: 102.01  },
-  { id: 'CCO', name: 'Chachoengsao Observatory',    country: '🇹🇭', lat: 13.72,  lon: 101.08  },
+  { id: 'APK', name: 'Astro Park Observatory',      country: '🇹🇭', lat: 18.85,  lon: 98.96   },
+  { id: 'CCO', name: 'Chachoengsao Observatory',    country: '🇹🇭', lat: 13.59,  lon: 101.26  },
   { id: 'SKA', name: 'Songkhla Observatory',         country: '🇹🇭', lat: 7.16,   lon: 100.61  },
-  { id: 'KKN', name: 'KhonKaen Observatory',         country: '🇹🇭', lat: 16.43,  lon: 102.82  },
+  { id: 'KKN', name: 'KhonKaen Observatory',         country: '🇹🇭', lat: 16.76,  lon: 102.62  },
   { id: 'GAO', name: 'Gao Mei Gu Observatory',       country: '🇨🇳', lat: 26.70,  lon: 100.03  },
   { id: 'SPB', name: 'Springbrook Observatory',      country: '🇦🇺', lat: -28.22, lon: 153.28  },
   { id: 'SRO', name: 'Sierra Remote Observatories',  country: '🇺🇸', lat: 36.97,  lon: -119.40 },
@@ -67,3 +67,15 @@ export function scoreColor(score: number): string {
 }
 
 export const OBSERVATORY_ORDER = ['TNO','APK','CCO','SKA','KKN','GAO','SPB','SRO','PR8']
+
+export const OBS_TIMEZONE: Record<string, string> = {
+  TNO: 'Asia/Bangkok',
+  APK: 'Asia/Bangkok',
+  CCO: 'Asia/Bangkok',
+  SKA: 'Asia/Bangkok',
+  KKN: 'Asia/Bangkok',
+  GAO: 'Asia/Shanghai',
+  SPB: 'Australia/Brisbane',
+  SRO: 'America/Los_Angeles',
+  PR8: 'America/Santiago',
+}

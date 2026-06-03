@@ -2,7 +2,7 @@
 import { useState }     from 'react'
 import Sidebar           from '@/components/Sidebar'
 import { ObsCard } from '@/components/ObsCard'
-import { WorldMap } from '@/components/Map/WorldMap'
+import { GlobeMap } from '@/components/Map/GlobeMap'
 import AiChat            from '@/components/AiChat'
 import { useWeather }    from '@/hooks/useWeather'
 import { COLORS }        from '@/constants/observatories'
@@ -30,7 +30,7 @@ export default function Home() {
     : []
 
   return (
-    <div style={{ minHeight: '100vh', background: COLORS.bg, color: '#f1f5f9', fontFamily: "'DM Sans','Helvetica Neue',sans-serif", display: 'flex' }}>
+    <div style={{ minHeight: '100vh', background: COLORS.bg, color: '#f1f5f9', display: 'flex' }}>
       <style>{`
         * { box-sizing: border-box; }
         .main-layout { flex: 1; min-width: 0; padding: 20px 28px; }
@@ -67,7 +67,7 @@ export default function Home() {
         </div>
 
         {/* แผนที่ */}
-        <WorldMap observatories={observatories} />
+        <GlobeMap observatories={observatories} />
 
         {/* AI Chat */}
         <AiChat

@@ -1,12 +1,11 @@
-
-// คำนวณ Observation Score 0-100 บอกว่าหอดูดาวพร้อมดูดาวแค่ไหน
+// คำนวณคะแนนความพร้อมดูดาว 0-100 จากสภาพอากาศ
 
 import { Observatory } from '@/types'
 
 export function calcScore(obs: Observatory): number {
 
-  if (obs.rain_rate > 0)     return 0  // ฝนตก
-  if (obs.cloud_cover >= 95) return 0  // เมฆทึบหมด
+  if (obs.rain_rate > 0)     return 0  // ฝนตกให้ 0
+  if (obs.cloud_cover >= 95) return 0  // เมฆเกือบเต็มท้องฟ้าให้ 0
   const cloudScore = (100 - obs.cloud_cover) * 0.60
   const humidRaw = obs.humidity <= 70
     ? 100

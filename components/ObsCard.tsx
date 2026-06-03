@@ -1,171 +1,132 @@
 'use client'
-import { useState }    from 'react'
-import { useRouter }   from 'next/navigation'
-import { COLORS } from '@/constants/observatories'
-import { Observatory } from '@/types'
-import { getSkyPhoto } from '@/lib/skyPhoto'
+import { useState, useEffect } from 'react'
+import { useRouter }           from 'next/navigation'
+import { COLORS, OBS_TIMEZONE } from '@/constants/observatories'
+import { Observatory }          from '@/types'
+import { getSkyPhoto }          from '@/lib/skyPhoto'
+
+const boxBg = 'linear-gradient(135deg, #16223f 0%, #0d1627 50%, #161c30 100%)'
+
+function WarnIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  )
+}
 
 type ObsCardProps = { obs: Observatory }
 
 export function ObsCard({ obs }: ObsCardProps) {
-  const router  = useRouter()
-  const [hovered, setHovered] = useState(false)
-  const skyPhoto = getSkyPhoto(obs.condition, obs.timestamp, obs.narit_image_url)
+  const router = useRouter()
+  const [hov, setHov] = useState(false)
+  const [now, setNow] = useState(new Date())
 
-  // เช็คว่าข้อมูลเก่าเกิน 5 นาทีไหม
-  const isOutdated = Date.now() - new Date(obs.timestamp).getTime() > 5 * 60 * 1000
+  const skyPhoto = getSkyPhoto(obs.condition, obs.timestamp, obs.narit_image_url)
+  const [imgFailed, setImgFailed] = useState(false)
+
+  const sensorAge      = Date.now() - new Date(obs.timestamp).getTime()
+  const isDataOutdated = sensorAge > 30 * 60 * 1000          // sensor ไม่อัปมากกว่า 30 นาที
+  const isSkyOutdated  = !obs.narit_image_url || imgFailed   // ไม่มี URL หรือรูปโหลดไม่ได้เท่านั้น
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(t)
+  }, [])
+
+  const Badge = ({ text }: { text: string }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#dc2626', borderRadius: '5px', padding: '3px 9px' }}>
+      <WarnIcon />
+      <span style={{ fontSize: '10px', color: '#fff', fontWeight: 700, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{text}</span>
+    </div>
+  )
 
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
       onClick={() => router.push(`/observatory/${obs.observatory_id}`)}
       style={{
-        background:     hovered ? '#141b24' : COLORS.card,
-        borderRadius:   '16px',
-        border:         hovered ? '1.5px solid rgba(79,209,197,0.35)' : '1.5px solid rgba(255,255,255,0.08)',
-        padding:        '20px 20px 20px 24px',
-        cursor:         'pointer',
-        transition:     'all 0.22s',
-        transform:      hovered ? 'translateY(-3px)' : 'translateY(0)',
-        boxShadow:      hovered ? '0 16px 48px rgba(79,209,197,0.08)' : '0 2px 16px rgba(0,0,0,0.5)',
-        display:        'flex',
-        justifyContent: 'space-between',
-        alignItems:     'center',
-        gap:            '16px',
-        height:         '100%',
-        overflow:       'hidden',
-        position:       'relative',
+        position:     'relative',
+        background:   boxBg,
+        borderRadius: '12px',
+        border:       `1px solid ${hov ? 'rgba(6,214,160,0.38)' : 'rgba(255,255,255,0.06)'}`,
+        boxShadow:    hov ? '0 12px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(6,214,160,0.12)' : '0 4px 20px rgba(0,0,0,0.4)',
+        transform:    hov ? 'translateY(-4px)' : 'translateY(0)',
+        transition:   'transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s, border-color 0.2s',
+        cursor:       'pointer',
+        height:       '100%',
+        overflow:     'hidden',
+        fontFamily:   'var(--font-poppins)',
       }}
     >
-      <style>{`
-        .obs-name {
-          font-size: clamp(18px, 2vw, 22px);
-          font-weight: 600;
-          margin-bottom: 4px;
-          white-space: normal;
-          word-break: break-word;
-          line-height: 1.3;
-          transition: color 0.2s;
-        }
-        .obs-timestamp {
-          font-size: clamp(13px, 1.2vw, 14px);
-          color: #ccced1;
-          margin-bottom: 16px;
-        }
-        .obs-temp {
-          font-size: clamp(44px, 4vw, 56px);
-          font-weight: 200;
-          color: #ffffff;
-          line-height: 1;
-          margin-bottom: 8px;
-        }
-        .obs-temp span {
-          font-size: clamp(30px, 3vw, 40px);
-        }
-        .obs-condition {
-          font-size: clamp(15px, 1.5vw, 20px);
-          color: #94a3b8;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin-bottom: 16px;
-        }
-        .obs-label {
-          font-size: clamp(12px, 1.2vw, 16px);
-          color: #4fd1c5;
-          opacity: 0.7;
-          margin-bottom: 2px;
-          letter-spacing: 0.08em;
-        }
-        .obs-value {
-          font-size: clamp(15px, 1.4vw, 17px);
-          font-weight: 600;
-          color: #ffffff;
-        }
-        .obs-img {
-          width:  clamp(120px, 14vw, 175px);
-          height: clamp(120px, 14vw, 175px);
-        }
-        @media (max-width: 680px) {
-          .obs-img {
-            width:  110px !important;
-            height: 110px !important;
-          }
-        }
-      `}</style>
+      {/* รูปท้องฟ้า อยู่ครึ่งขวาแบบเต็มขอบ */}
+      <img
+        src={skyPhoto}
+        alt={obs.condition}
+        style={{
+          position:       'absolute',
+          top: 0, right: 0,
+          width:          '52%',
+          height:         '100%',
+          objectFit:      'cover',
+          objectPosition: 'center',
+          transform:      hov ? 'scale(1.55)' : 'scale(1.45)',
+          transition:     'transform 0.5s ease',
+        }}
+        onError={() => setImgFailed(true)}
+      />
 
-      {/* ✅ badge Data not up to date */}
-      {isOutdated && (
-        <div style={{
-          position: 'absolute',
-          bottom: '14px',
-          right: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
-          background: 'rgba(239,68,68,0.15)',
-          border: '1px solid rgba(239,68,68,0.4)',
-          borderRadius: '20px',
-          padding: '4px 10px',
-          zIndex: 2,
-        }}>
-          <span style={{ fontSize: '11px' }}>⚠️</span>
-          <span style={{ fontSize: '11px', color: '#f87171', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            Data not up to date
-          </span>
+      {/* gradient overlay */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #0d1627 35%, rgba(13,22,39,0.5) 52%, transparent 100%)', pointerEvents: 'none' }} />
+
+      {/* ป้ายเตือน วางมุมขวาล่างเรียงลงมา */}
+      {(isDataOutdated || isSkyOutdated) && (
+        <div style={{ position: 'absolute', bottom: '14px', right: '14px', zIndex: 3, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+          {isDataOutdated && <Badge text="DATA NOT UP TO DATE" />}
+          {isSkyOutdated  && <Badge text="SKY NOT UP TO DATE"  />}
         </div>
       )}
 
-      {/* LEFT */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p className="obs-name" style={{ color: hovered ? '#4fd1c5' : '#e2e8f0' }}>
-          {obs.name}
-        </p>
-        <p className="obs-timestamp">
-          {new Date(obs.timestamp).toLocaleString('en-GB', {
-            weekday: 'short', day: '2-digit', month: 'short',
-            hour: '2-digit', minute: '2-digit',
-          })}
-        </p>
-        <div className="obs-temp">
-          {obs.temperature?.toFixed(1)}<span>°C</span>
-        </div>
-        <div className="obs-condition">
-          <span>{obs.condition === 'Clear' ? '🌙' : obs.condition === 'Partly Cloudy' ? '⛅' : obs.condition === 'Overcast' ? '🌥' : '☁️'}</span>
-          <span>{obs.condition}</span>
-        </div>
-        <div style={{ display: 'flex', gap: '24px' }}>
-          <div>
-            <div className="obs-label">HUMID</div>
-            <div className="obs-value">{obs.humidity}%</div>
-          </div>
-          <div>
-            <div className="obs-label">WIND</div>
-            <div className="obs-value">{obs.wind_speed} m/s</div>
-          </div>
-        </div>
-      </div>
+      {/* Content */}
+      <div style={{ position: 'relative', zIndex: 2, padding: '20px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
 
-      {/* RIGHT: รูปวงกลม */}
-      <div className="obs-img" style={{
-        borderRadius: '50%',
-        overflow:     'hidden',
-        border:       '2px solid rgba(79,209,197,0.2)',
-        flexShrink:   0,
-        position:     'relative',
-      }}>
-        <img
-          src={skyPhoto}
-          alt={obs.condition}
-          style={{
-            width: '100%', height: '100%', objectFit: 'cover',
-            transition: 'transform 0.4s',
-            transform: hovered ? 'scale(1.08)' : 'scale(1)',
-          }}
-          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-        />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.4) 100%)' }}/>
+        {/* TOP */}
+        <div>
+          <div style={{ fontSize: '10px', color: '#fff', letterSpacing: '0.12em', fontWeight: 700, marginBottom: '3px', textTransform: 'uppercase' }}>
+            {obs.observatory_id}
+          </div>
+          <div style={{ fontSize: 'clamp(14px,1.6vw,18px)', fontWeight: 600, color: COLORS.teal, marginBottom: '4px', lineHeight: 1.3, maxWidth: '55%' }}>
+            {obs.name}
+          </div>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.02em' }}>
+            {now.toLocaleString('en-GB', { timeZone: OBS_TIMEZONE[obs.observatory_id] || 'UTC', weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+
+        {/* BOTTOM */}
+        <div>
+          <div style={{ fontSize: 'clamp(36px,3.8vw,52px)', fontWeight: 200, color: '#fff', lineHeight: 1, letterSpacing: '-0.02em', marginBottom: '4px' }}>
+            {obs.temperature?.toFixed(1)}<span style={{ fontSize: 'clamp(22px,2.5vw,32px)', color: 'rgba(255,255,255,0.7)' }}>°C</span>
+          </div>
+          <div style={{ fontSize: 'clamp(12px,1.2vw,14px)', color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+            <span>{obs.condition === 'Clear' ? '🌙' : obs.condition === 'Partly Cloudy' ? '⛅' : obs.condition === 'Overcast' ? '🌥' : '☁️'}</span>
+            <span>{obs.condition}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <div>
+              <div style={{ fontSize: '10px', color: 'rgba(79,209,197,0.7)', letterSpacing: '0.08em', fontWeight: 600, marginBottom: '2px', textTransform: 'uppercase' }}>HUMID</div>
+              <div style={{ fontSize: 'clamp(13px,1.2vw,15px)', fontWeight: 600, color: '#fff' }}>{obs.humidity}%</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '10px', color: 'rgba(79,209,197,0.7)', letterSpacing: '0.08em', fontWeight: 600, marginBottom: '2px', textTransform: 'uppercase' }}>WIND</div>
+              <div style={{ fontSize: 'clamp(13px,1.2vw,15px)', fontWeight: 600, color: '#fff' }}>{obs.wind_speed} m/s</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   )
@@ -173,13 +134,8 @@ export function ObsCard({ obs }: ObsCardProps) {
 
 export function SkeletonCard() {
   return (
-    <div style={{
-      background: COLORS.card, borderRadius: '16px', height: '100%',
-      border: '1.5px solid rgba(255,255,255,0.08)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: '#1e3030', fontSize: '14px',
-    }}>
-      Loading...
+    <div style={{ background: boxBg, borderRadius: '12px', height: '100%', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '11px', fontFamily: 'var(--font-poppins)', letterSpacing: '0.1em' }}>
+      LOADING...
     </div>
   )
 }
