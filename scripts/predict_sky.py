@@ -64,27 +64,27 @@ def predict_cloud_1h(obs_id: str, history_24h: list, current: dict) -> list:
         # 30 นาทีล่าสุดแบบละเอียด (ทุก 5 นาที)
         recent = [round(p, 1) for p in pcts[-6:]]
 
-        prompt = f"""ทำนายปริมาณเมฆหอดูดาว {obs_id} ล่วงหน้า 1 ชั่วโมง
+        prompt = f"""ทำนายปริมาณเมฆหอดูดาว {obs_id} ล่วงหน้า 15 นาที
 
         เมฆ 24 ชม. (รายชั่วโมง): {' → '.join(map(str, hourly))}
         เมฆ 30 นาทีล่าสุด (5-นาที): {' → '.join(map(str, recent))}
         ตอนนี้: เมฆ {current.get('pixel_cloud_percent','--')}% ชื้น {current.get('humidity','--')}% ลม {current.get('wind_speed','--')} m/s ฝน {current.get('rain_rate',0)} mm/hr กดอากาศ {current.get('pressure','--')} hPa สภาพ {current.get('narit_sky_status','--')}
 
-        ตอบ JSON เท่านั้น (12 ค่า ทุก 5 นาที = 60 นาที, ค่าเป็น % เมฆ 0-100):
-        {{"p":[45,44,43,44,46,48,50,52,51,50,48,46]}}"""
+        ตอบ JSON เท่านั้น (3 ค่า ทุก 5 นาที = 15 นาที, ค่าเป็น % เมฆ 0-100):
+        {{"p":[45,44,43]}}"""
 
         res = requests.post(
             LITELLM_URL,
             headers={'Authorization': f'Bearer {LITELLM_KEY}', 'Content-Type': 'application/json'},
             json={'model': 'deepseek-v4-flash', 'messages': [{'role': 'user', 'content': prompt}],
-                  'max_tokens': 80, 'temperature': 0.2},
+                  'max_tokens': 40, 'temperature': 0.2},
             timeout=20
         )
         content = res.json()['choices'][0]['message']['content'].strip()
         content = content.replace('```json','').replace('```','').strip()
         data = _json.loads(content)
         preds = data.get('p', [])
-        if len(preds) == 12 and all(isinstance(v, (int, float)) for v in preds):
+        if len(preds) == 3 and all(isinstance(v, (int, float)) for v in preds):
             return [max(0.0, min(100.0, float(v))) for v in preds]
         return []
     except Exception as e:
@@ -267,9 +267,10 @@ _run_counter = 0
 def run():
     global _run_counter
     _run_counter += 1
+    target_idx = (_run_counter - 1) % len(OBSERVATORIES)
     print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Collect + FastSAM")
 
-    for obs in OBSERVATORIES:
+    for idx, obs in enumerate(OBSERVATORIES):
         obs_id = obs['id']
 
         sky = fetch_skycamera(obs_id)
@@ -304,35 +305,34 @@ def run():
             'updated_at':          datetime.now(timezone.utc),
         }
 
-        # ดึง history 5 นาทีล่าสุด ส่งให้ LLM วิเคราะห์ trend + prediction
-        try:
-            now_utc   = datetime.now(timezone.utc)
-            from_ts   = now_utc - timedelta(minutes=5)
-            history_5 = list(db.weather_history.find(
-                {'observatory_id': obs_id, 'timestamp': {'$gte': from_ts}},
-                {'pixel_cloud_percent': 1}
-            ).sort('timestamp', 1).limit(5))
-            history_pcts = [r.get('pixel_cloud_percent') for r in history_5]
-            history_pcts.append(cloud_pct)  # เพิ่มค่าปัจจุบันต่อท้าย
+        if idx == target_idx:
+            try:
+                now_utc   = datetime.now(timezone.utc)
+                from_ts   = now_utc - timedelta(minutes=5)
+                history_5 = list(db.weather_history.find(
+                    {'observatory_id': obs_id, 'timestamp': {'$gte': from_ts}},
+                    {'pixel_cloud_percent': 1}
+                ).sort('timestamp', 1).limit(5))
+                history_pcts = [r.get('pixel_cloud_percent') for r in history_5]
+                history_pcts.append(cloud_pct)  # เพิ่มค่าปัจจุบันต่อท้าย
 
-            ai = ai_fusion_trend(
-                obs_id       = obs_id,
-                history_pcts = history_pcts,
-                narit_status = sky.get('narit_sky_status', '--'),
-                humidity     = sky.get('humidity', 0) or 0,
-                rain_rate    = sky.get('rain_rate', 0) or 0,
-            )
-            if ai:
-                result.update(ai)
-        except Exception as e:
-            print(f"  [WARN] AI Fusion skip {obs_id}: {e}")
+                ai = ai_fusion_trend(
+                    obs_id       = obs_id,
+                    history_pcts = history_pcts,
+                    narit_status = sky.get('narit_sky_status', '--'),
+                    humidity     = sky.get('humidity', 0) or 0,
+                    rain_rate    = sky.get('rain_rate', 0) or 0,
+                )
+                if ai:
+                    result.update(ai)
+            except Exception as e:
+                print(f"  [WARN] AI Fusion skip {obs_id}: {e}")
 
         db.weather_realtime.update_one(
             {'observatory_id': obs_id}, {'$set': result}, upsert=True
         )
 
-        # ทำนายเมฆ 1 ชม. ข้างหน้า ทุกๆ 5 รอบ (ประมาณ 5 นาที)
-        if _run_counter % 5 == 1:
+        if idx == target_idx:
             try:
                 now_utc    = datetime.now(timezone.utc)
                 hist_24h   = list(db.weather_history.find(
