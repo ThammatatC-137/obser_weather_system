@@ -66,12 +66,12 @@ def predict_cloud_1h(obs_id: str, history_24h: list, current: dict) -> list:
 
         prompt = f"""ทำนายปริมาณเมฆหอดูดาว {obs_id} ล่วงหน้า 1 ชั่วโมง
 
-เมฆ 24 ชม. (รายชั่วโมง): {' → '.join(map(str, hourly))}
-เมฆ 30 นาทีล่าสุด (5-นาที): {' → '.join(map(str, recent))}
-ตอนนี้: เมฆ {current.get('pixel_cloud_percent','--')}% ชื้น {current.get('humidity','--')}% ลม {current.get('wind_speed','--')} m/s ฝน {current.get('rain_rate',0)} mm/hr กดอากาศ {current.get('pressure','--')} hPa สภาพ {current.get('narit_sky_status','--')}
+        เมฆ 24 ชม. (รายชั่วโมง): {' → '.join(map(str, hourly))}
+        เมฆ 30 นาทีล่าสุด (5-นาที): {' → '.join(map(str, recent))}
+        ตอนนี้: เมฆ {current.get('pixel_cloud_percent','--')}% ชื้น {current.get('humidity','--')}% ลม {current.get('wind_speed','--')} m/s ฝน {current.get('rain_rate',0)} mm/hr กดอากาศ {current.get('pressure','--')} hPa สภาพ {current.get('narit_sky_status','--')}
 
-ตอบ JSON เท่านั้น (12 ค่า ทุก 5 นาที = 60 นาที, ค่าเป็น % เมฆ 0-100):
-{{"p":[45,44,43,44,46,48,50,52,51,50,48,46]}}"""
+        ตอบ JSON เท่านั้น (12 ค่า ทุก 5 นาที = 60 นาที, ค่าเป็น % เมฆ 0-100):
+        {{"p":[45,44,43,44,46,48,50,52,51,50,48,46]}}"""
 
         res = requests.post(
             LITELLM_URL,
