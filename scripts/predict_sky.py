@@ -47,10 +47,10 @@ THRESHOLD_OFFSET = {
   'SKA':   5,
 }
 
-LITELLM_URL = "https://lllm.narit.or.th/v1/chat/completions"
-LITELLM_KEY = os.getenv("LITELLM_API_KEY")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_KEY = os.getenv("GROQ_API_KEY")
 
-# ส่งข้อมูลย้อนหลัง 24 ชม. ให้ LLM ทำนายปริมาณเมฆ 1 ชม. ข้างหน้า (12 ค่า ทุก 5 นาที)
+# ส่งข้อมูลย้อนหลัง 24 ชม. ให้ LLM ทำนายปริมาณเมฆ 15 นาทีข้างหน้า (3 ค่า ทุก 5 นาที)
 def predict_cloud_1h(obs_id: str, history_24h: list, current: dict) -> list:
     try:
         import json as _json
@@ -74,10 +74,10 @@ def predict_cloud_1h(obs_id: str, history_24h: list, current: dict) -> list:
         {{"p":[45,44,43]}}"""
 
         res = requests.post(
-            LITELLM_URL,
-            headers={'Authorization': f'Bearer {LITELLM_KEY}', 'Content-Type': 'application/json'},
-            json={'model': 'deepseek-v4-flash', 'messages': [{'role': 'user', 'content': prompt}],
-                  'max_tokens': 40, 'temperature': 0.2},
+            GROQ_URL,
+            headers={'Authorization': f'Bearer {GROQ_KEY}', 'Content-Type': 'application/json'},
+            json={'model': 'llama-3.1-8b-instant', 'messages': [{'role': 'user', 'content': prompt}],
+                  'max_tokens': 40, 'temperature': 0.2, 'response_format': {'type': 'json_object'}},
             timeout=20
         )
         content = res.json()['choices'][0]['message']['content'].strip()
@@ -119,13 +119,14 @@ prediction ต้องระบุ % เมฆที่เปลี่ยนแ
 {{"trend": "อธิบาย trend เมฆสั้นๆ ไม่เกิน 10 คำ", "prediction": "คาดการณ์ 15-30 นาทีข้างหน้า ระบุ % เมฆที่เปลี่ยน ไม่เกิน 20 คำ"}}"""
 
         res = requests.post(
-            LITELLM_URL,
-            headers={'Authorization': f'Bearer {LITELLM_KEY}', 'Content-Type': 'application/json'},
+            GROQ_URL,
+            headers={'Authorization': f'Bearer {GROQ_KEY}', 'Content-Type': 'application/json'},
             json={
-                'model': 'deepseek-v4-flash',
+                'model': 'llama-3.1-8b-instant',
                 'messages': [{'role': 'user', 'content': prompt}],
                 'max_tokens': 150,
                 'temperature': 0.3,
+                'response_format': {'type': 'json_object'},
             },
             timeout=20
         )

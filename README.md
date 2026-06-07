@@ -74,7 +74,8 @@ docker compose up -d --build
 | ตัวแปร | ใช้ทำอะไร |
 |--------|-----------|
 | `MONGODB_URI` | connection string ของ MongoDB |
-| `LITELLM_API_KEY` | คีย์เรียก LiteLLM (DeepSeek) ของ NARIT |
+| `GROQ_API_KEY` | คีย์เรียก Groq (ทำนายเมฆ/วิเคราะห์ใน predict_sky) |
+| `GEMINI_API_KEY` | คีย์เรียก Gemini (แชต AI ในเว็บ) |
 | `NEXT_PUBLIC_GEOAPIFY_KEY` | geocode สำรองในหน้า `/find` (เปิดเผยฝั่ง client) |
 
 ---

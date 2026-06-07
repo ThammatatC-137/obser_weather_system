@@ -14,8 +14,9 @@ export async function POST(request: Request) {
     const db = mongoose.connection.db!
 
     // ดึง Forecast
+    const todayKey = new Date().toISOString().split('T')[0]
     const forecasts = await db.collection('weather_forecast')
-      .find({})
+      .find({ date: { $gte: todayKey } })
       .sort({ observatory_id: 1, date: 1 })
       .toArray()
 
@@ -117,24 +118,39 @@ ${historicalInfo}
 แล้วต่อท้ายด้วย FILTER_IDS: คั่นด้วยคอมมา เช่น FILTER_IDS: TNO,SRO
 ถ้าไม่ต้องกรองให้ใส่ FILTER_IDS: none`
 
-    const res = await fetch('https://lllm.narit.or.th/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${process.env.LITELLM_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model:       'deepseek-v4-flash-think',
-        messages:    [{ role: 'user', content: prompt }],
-        max_tokens:  8000,
-        temperature: 0.5,
-      }),
-    })
+    const callLLM = (url: string, key: string, model: string, content: string) =>
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model,
+          messages:    [{ role: 'user', content }],
+          max_tokens:  8000,
+          temperature: 0.5,
+        }),
+      })
+
+    // ลอง Gemini ก่อน ถ้าเจอ 503/429 (คนใช้เยอะ) ค่อยลองใหม่อีกรอบ
+    let res!: Response
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      res = await callLLM('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        process.env.GEMINI_API_KEY!, 'gemini-2.5-flash', prompt)
+      if (res.ok || !(res.status === 429 || res.status >= 500)) break
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1200))
+    }
+
+    // ถ้า Gemini ยังไม่ได้ เปลี่ยนไปใช้ Groq แทน ตัดข้อมูลย้อนหลังออกให้ prompt สั้นลง
+    if (!res.ok) {
+      console.error('Gemini failed → fallback Groq:', res.status)
+      const promptLite = prompt.replace(historicalInfo, '(เน้นข้อมูลปัจจุบันและพยากรณ์เป็นหลัก)')
+      res = await callLLM('https://api.groq.com/openai/v1/chat/completions',
+        process.env.GROQ_API_KEY!, 'llama-3.3-70b-versatile', promptLite)
+    }
 
     if (!res.ok) {
       const errText = await res.text()
-      console.error('LiteLLM error:', res.status, errText)
-      return NextResponse.json({ answer: `Error ${res.status}: ${errText}`, filter: [] })
+      console.error('AI providers failed:', res.status, errText)
+      return NextResponse.json({ answer: 'ตอนนี้ระบบ AI ใช้งานไม่ได้ชั่วคราวครับ รบกวนลองใหม่อีกครั้งในอีกสักครู่', filter: [] })
     }
 
     const data    = await res.json()

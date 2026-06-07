@@ -34,7 +34,6 @@ export default function AiChat({ observatories, onFilter }: Props) {
   const [messages,        setMessages]        = useState<Message[]>([])
   const [input,           setInput]           = useState('')
   const [loading,         setLoading]         = useState(false)
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -45,7 +44,6 @@ export default function AiChat({ observatories, onFilter }: Props) {
     const question = (q ?? input).trim()
     if (!question || loading) return
     setInput('')
-    setShowSuggestions(false)
     setLoading(true)
     setMessages(prev => [...prev, { role: 'user', content: question }])
     try {
@@ -86,8 +84,8 @@ export default function AiChat({ observatories, onFilter }: Props) {
         )}
       </div>
 
-      {/* คำถามแนะนำ แสดงเมื่อยังไม่มีข้อความ หรือ focus ช่องพิมพ์ตอน input ว่าง */}
-      {(messages.length === 0 || showSuggestions) && !loading && (
+      {/* คำถามแนะนำ แสดงค้างไว้ตลอด (ไม่หายหลังถาม) */}
+      {!loading && (
         <div style={{ padding: '10px 16px 0', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {SUGGESTIONS.map((s, i) => (
             <button
@@ -126,9 +124,7 @@ export default function AiChat({ observatories, onFilter }: Props) {
         <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>{'>'}</span>
         <input
           value={input}
-          onChange={e => { setInput(e.target.value); setShowSuggestions(false) }}
-          onFocus={() => { if (!input) setShowSuggestions(true) }}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && send()}
           placeholder="ถามเกี่ยวกับสภาพอากาศ หรือเลือกคำถามด้านบน..."
           style={{ flex: 1, background: 'transparent', border: 'none', color: '#f1f5f9', padding: 0, fontSize: '13px', outline: 'none', fontFamily: 'var(--font-poppins)' }}

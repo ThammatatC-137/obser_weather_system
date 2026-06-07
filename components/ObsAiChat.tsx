@@ -113,7 +113,6 @@ export default function ObsAiChat({ obs }: Props) {
   const [messages,        setMessages]        = useState<Message[]>([])
   const [input,           setInput]           = useState('')
   const [loading,         setLoading]         = useState(false)
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [frames,     setFrames]     = useState<SkyFrame[]>([])
   const [prediction, setPrediction] = useState<string | null>(null)
   const [animIdx,    setAnimIdx]    = useState(0)
@@ -246,7 +245,6 @@ export default function ObsAiChat({ obs }: Props) {
     const question = (q ?? input).trim()
     if (!question || loading) return
     setInput('')
-    setShowSuggestions(false)
     setLoading(true)
     const now = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
     setMessages(prev => [...prev, { role: 'user', content: question, timestamp: now }])
@@ -382,10 +380,18 @@ export default function ObsAiChat({ obs }: Props) {
               flex: 1, display: 'flex', flexDirection: 'column', marginTop: '16px', minHeight: 0, cursor: 'default',
             }}
           >
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', fontWeight: 600, marginBottom: '8px' }}>AI INTERACTIVE CHAT</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', fontWeight: 600 }}>AI INTERACTIVE CHAT</span>
+              {messages.length > 0 && (
+                <button onClick={() => setMessages([])}
+                  style={{ background: 'transparent', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '4px', color: '#f87171', padding: '2px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-poppins)', letterSpacing: '0.05em' }}>
+                  CLEAR
+                </button>
+              )}
+            </div>
 
             {/* Suggestion chips */}
-            {(messages.length === 0 || showSuggestions) && !loading && (
+            {!loading && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '10px' }}>
                 {OBS_SUGGESTIONS.map((s, i) => (
                   <button key={i} onClick={() => send(s.text)}
@@ -415,9 +421,7 @@ export default function ObsAiChat({ obs }: Props) {
               <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>{'>'}</span>
               <input
                 value={input}
-                onChange={e => { setInput(e.target.value); setShowSuggestions(false) }}
-                onFocus={() => { if (!input) setShowSuggestions(true) }}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && send()}
                 placeholder="ถาม AI ได้เลยครับ..."
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '12px', fontFamily: 'var(--font-poppins)' }}
