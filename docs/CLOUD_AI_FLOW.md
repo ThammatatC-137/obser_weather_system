@@ -113,7 +113,7 @@ weather_history ───────────┤→ /api/cloud-prediction �
 | Collection                   | เก็บอะไร                                      |
 |------------------------------|----------------------------------------------|
 | `weather_realtime`           | ค่าล่าสุดของแต่ละหอ + ai_trend / ai_prediction |
-| `weather_history`            | จุดข้อมูลย้อนหลัง (เก็บ 90 วัน)                 |
+| `weather_history`            | จุดข้อมูลย้อนหลัง (เก็บ 15 วัน)                 |
 | `weather_cloud_predictions`  | ค่าทำนายเมฆ 1 ชม. ข้างหน้า (12 จุด)            |
 
 ---

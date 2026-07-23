@@ -380,8 +380,8 @@ def run():
         ai_trend = result.get('ai_trend', '')
         print(f"  OK   {obs_id}: NARIT={narit_status} | cloud {cloud_pct}% ({source}){f' | AI: {ai_trend}' if ai_trend else ''}")
 
-    # ลบข้อมูลย้อนหลังที่เกิน 3 เดือน (90 วัน)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+    # ลบข้อมูลย้อนหลังที่เกิน 15 วัน
+    cutoff = datetime.now(timezone.utc) - timedelta(days=15)
     db.weather_history.delete_many({"timestamp": {"$lt": cutoff}})
     print("Done")
 

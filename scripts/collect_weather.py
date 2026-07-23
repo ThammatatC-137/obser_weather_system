@@ -224,8 +224,8 @@ def collect_realtime():
     else:
       print(f"  FAIL {obs['id']}")
 
-  # ลบข้อมูลย้อนหลังที่เกิน 3 เดือน (90 วัน)
-  cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+  # ลบข้อมูลย้อนหลังที่เกิน 15 วัน
+  cutoff = datetime.now(timezone.utc) - timedelta(days=15)
   db.weather_history.delete_many({"timestamp": {"$lt": cutoff}})
   print("Realtime done")
 
